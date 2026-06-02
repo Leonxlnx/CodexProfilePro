@@ -189,7 +189,7 @@ function getVisibleEndDate() {
 
 function fitHeatmap(columns) {
   const availableWidth = els.heatmapWrap?.clientWidth || 914;
-  const gap = Math.max(2, Math.min(4, Math.floor(availableWidth / 300)));
+  const gap = availableWidth < 720 ? 3 : 4;
   const cell = Math.max(8, (availableWidth - ((columns - 1) * gap)) / columns);
   const usedWidth = (cell * columns) + (gap * (columns - 1));
   const offset = Math.max(0, Math.floor((availableWidth - usedWidth) / 2));
