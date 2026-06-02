@@ -19,7 +19,10 @@
   "build": {
     "appId": "com.lexn8.codex-profile-remake",
     "productName": "Codex Profile",
-    "asar": false,
+    "asar": true,
+    "asarUnpack": [
+      "profile-remake/fast-codex-usage-export.mjs"
+    ],
     "files": [
       "profile-remake/**/*",
       "!profile-remake/slopmeter.json",

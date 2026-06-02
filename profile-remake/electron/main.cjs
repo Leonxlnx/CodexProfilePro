@@ -24,6 +24,10 @@ function bundledPath(...segments) {
   return path.join(appRoot(), "profile-remake", ...segments);
 }
 
+function unpackedPath(...segments) {
+  return path.join(process.resourcesPath, "app.asar.unpacked", "profile-remake", ...segments);
+}
+
 function userDataPath(...segments) {
   return path.join(app.getPath("userData"), ...segments);
 }
@@ -37,6 +41,9 @@ function fallbackUsageJsonPath() {
 }
 
 function exporterPath() {
+  if (app.isPackaged) {
+    return unpackedPath("fast-codex-usage-export.mjs");
+  }
   return bundledPath("fast-codex-usage-export.mjs");
 }
 
