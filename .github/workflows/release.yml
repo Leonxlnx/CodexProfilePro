@@ -14,12 +14,24 @@ on:
 
 jobs:
   build:
-    name: Build ${{ matrix.os }}
+    name: Build ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        include:
+          - name: windows-x64
+            os: windows-latest
+            build: npm run dist:win
+          - name: macos-x64
+            os: macos-13
+            build: npm run dist:mac -- --x64
+          - name: macos-arm64
+            os: macos-latest
+            build: npm run dist:mac -- --arm64
+          - name: linux-x64
+            os: ubuntu-latest
+            build: npm run dist:linux
 
     steps:
       - uses: actions/checkout@v4
@@ -29,10 +41,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      - run: npm run dist
+      - run: ${{ matrix.build }}
       - uses: actions/upload-artifact@v4
         with:
-          name: codex-profile-${{ matrix.os }}
+          name: codex-profile-${{ matrix.name }}
           path: |
             dist/**
             !dist/**/*.blockmap
