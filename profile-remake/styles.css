@@ -14,7 +14,7 @@
   --cell: 16px;
   --gap: 3px;
   --app-zoom: 1.15;
-  --content-width: 927px;
+  --content-width: 975.652173913px;
 }
 
 * {
@@ -155,7 +155,7 @@ button {
 .metric-panel {
   width: min(100%, var(--content-width));
   height: 76px;
-  margin: 40px auto 0;
+  margin: 46px auto 0;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: center;
@@ -196,7 +196,7 @@ button {
 
 .activity-card {
   width: min(100%, var(--content-width));
-  margin: 34px auto 0;
+  margin: 40px auto 0;
 }
 
 .activity-header {
@@ -249,7 +249,7 @@ button {
   width: 100%;
   max-width: 100%;
   overflow: visible;
-  padding-bottom: 24px;
+  padding-bottom: 34px;
 }
 
 .heatmap {
@@ -270,11 +270,11 @@ button {
   cursor: default;
   animation: cell-in 260ms cubic-bezier(.2, .8, .2, 1) both;
   animation-delay: calc(min(var(--i), 34) * 5ms);
-  transition: background-color 220ms ease, transform 220ms ease, opacity 220ms ease;
+  transition: background-color 220ms ease, filter 220ms ease, opacity 220ms ease;
 }
 
 .day-cell:hover {
-  transform: scale(1.12);
+  filter: brightness(1.08);
 }
 
 .day-cell[data-level="1"] {
@@ -309,7 +309,7 @@ button {
 
 .cost-summary {
   width: min(100%, var(--content-width));
-  margin-top: 12px;
+  margin-top: 26px;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   border: 1px solid var(--border);
@@ -324,12 +324,12 @@ button {
 
 .cost-card {
   min-width: 0;
-  min-height: 58px;
+  min-height: 64px;
   display: grid;
   align-content: center;
   justify-items: center;
   gap: 8px;
-  padding: 10px 16px;
+  padding: 13px 16px 14px;
   border-left: 1px solid #202025;
 }
 
@@ -370,7 +370,7 @@ button {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: 2px;
   height: 20px;
   color: #8f8f9d;
   font-size: 15px;

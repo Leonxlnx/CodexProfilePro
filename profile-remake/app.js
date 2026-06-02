@@ -189,8 +189,14 @@ function getVisibleEndDate() {
 
 function fitHeatmap(columns) {
   const availableWidth = els.heatmapWrap?.clientWidth || 914;
-  const gap = availableWidth < 720 ? 3 : 4;
-  const cell = Math.max(8, Math.floor((availableWidth - ((columns - 1) * gap)) / columns));
+  const appZoom = getAppZoom();
+  const renderedGap = availableWidth < 720 ? 4 : 5;
+  const availableRenderedWidth = availableWidth * appZoom;
+  const renderedCell = availableWidth < 720
+    ? Math.max(8, Math.floor((availableRenderedWidth - ((columns - 1) * renderedGap)) / columns))
+    : 18;
+  const gap = renderedGap / appZoom;
+  const cell = renderedCell / appZoom;
   const usedWidth = (cell * columns) + (gap * (columns - 1));
   const offset = Math.max(0, Math.floor((availableWidth - usedWidth) / 2));
   els.heatmap.style.setProperty("--gap", `${gap}px`);
@@ -205,6 +211,11 @@ function fitHeatmap(columns) {
     els.costSummary.style.width = `${usedWidth}px`;
     els.costSummary.style.marginLeft = `${offset}px`;
   }
+}
+
+function getAppZoom() {
+  const zoom = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--app-zoom"));
+  return Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
 }
 
 function renderCostSummary() {
@@ -345,11 +356,24 @@ function showTooltip(event, iso, value) {
 function moveTooltip(event) {
   const x = "clientX" in event ? event.clientX : event.target.getBoundingClientRect().left;
   const y = "clientY" in event ? event.clientY : event.target.getBoundingClientRect().top;
+  const zoom = getAppZoom();
   const pad = 14;
-  const width = els.tooltip.offsetWidth || 180;
-  const left = Math.min(window.innerWidth - width - 12, x + pad);
-  els.tooltip.style.left = `${Math.max(12, left)}px`;
-  els.tooltip.style.top = `${Math.max(12, y - 42)}px`;
+  const edge = 12;
+  const rect = els.tooltip.getBoundingClientRect();
+  const width = rect.width || (els.tooltip.offsetWidth * zoom) || 180;
+  const height = rect.height || (els.tooltip.offsetHeight * zoom) || 42;
+  let left = x + pad;
+  if (left + width > window.innerWidth - edge) {
+    left = x - width - pad;
+  }
+  let top = y - height - 10;
+  if (top < edge) {
+    top = y + pad;
+  }
+  left = Math.min(Math.max(edge, left), window.innerWidth - width - edge);
+  top = Math.min(Math.max(edge, top), window.innerHeight - height - edge);
+  els.tooltip.style.left = `${left / zoom}px`;
+  els.tooltip.style.top = `${top / zoom}px`;
 }
 
 function hideTooltip() {
