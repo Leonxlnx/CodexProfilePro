@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>leon - local Codex profile</title>
+    <link rel="icon" href="./assets/profile.ico" sizes="any" />
+    <link rel="apple-touch-icon" href="./assets/profile-icon.png" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="page-title">Profile</div>
+      <nav class="top-actions" aria-label="Profile actions">
+        <button class="ghost-action" type="button" aria-label="Profile visibility">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+            <path d="M6.5 10h11A1.5 1.5 0 0 1 19 11.5v7A1.5 1.5 0 0 1 17.5 20h-11A1.5 1.5 0 0 1 5 18.5v-7A1.5 1.5 0 0 1 6.5 10Z" />
+          </svg>
+          <span class="action-label">Private</span>
+        </button>
+        <button class="ghost-action" type="button" aria-label="Edit profile">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m4.5 16.9-.7 3.3 3.3-.7L18.9 7.7a2 2 0 0 0 0-2.8l-.8-.8a2 2 0 0 0-2.8 0L4.5 16.9Z" />
+            <path d="m14 5.4 4.2 4.2" />
+          </svg>
+          <span class="action-label">Edit</span>
+        </button>
+      </nav>
+    </header>
+
+    <main class="profile-shell">
+      <section class="identity" aria-label="Profile identity">
+        <div class="brand-mark">
+          <img src="./assets/profile-photo.jfif" alt="" />
+        </div>
+        <h1>leon</h1>
+        <div class="handle-row">
+          <span>@lexn8</span>
+          <span class="dot">.</span>
+          <span class="plan-pill">Pro</span>
+        </div>
+      </section>
+
+      <section class="metric-panel" aria-label="Profile stats">
+        <div class="metric">
+          <strong id="lifetimeTokens">...</strong>
+          <span>Lifetime tokens</span>
+        </div>
+        <div class="metric">
+          <strong id="peakTokens">...</strong>
+          <span>Peak tokens</span>
+        </div>
+        <div class="metric">
+          <strong id="longestTask">...</strong>
+          <span>Longest task</span>
+        </div>
+        <div class="metric">
+          <strong id="currentStreak">...</strong>
+          <span>Current streak</span>
+        </div>
+        <div class="metric">
+          <strong id="longestStreak">...</strong>
+          <span>Longest streak</span>
+        </div>
+      </section>
+
+      <section class="activity-card" aria-label="Token activity">
+        <div class="activity-header">
+          <h2>Token activity</h2>
+          <div class="tabs" role="tablist" aria-label="Heatmap mode">
+            <button class="tab is-active" type="button" data-mode="daily" role="tab" aria-selected="true">Daily</button>
+            <button class="tab" type="button" data-mode="weekly" role="tab" aria-selected="false">Weekly</button>
+            <button class="tab" type="button" data-mode="cumulative" role="tab" aria-selected="false">Cumulative</button>
+            <button class="tab" type="button" data-mode="cost" role="tab" aria-selected="false">Cost</button>
+          </div>
+        </div>
+        <div class="heatmap-wrap">
+          <div id="heatmap" class="heatmap" aria-label="Daily token heatmap"></div>
+          <div id="monthLabels" class="month-labels" aria-hidden="true"></div>
+        </div>
+        <div id="costSummary" class="cost-summary" hidden>
+          <div class="cost-card">
+            <strong id="totalCost">$0.00</strong>
+            <span>Total estimated API cost</span>
+          </div>
+          <div class="cost-card">
+            <strong id="monthCost">$0.00</strong>
+            <span>This month</span>
+          </div>
+          <div class="cost-card">
+            <strong id="peakCost">$0.00</strong>
+            <span id="peakCostLabel">Peak cost day</span>
+          </div>
+          <div class="cost-card">
+            <strong id="averageCost">$0.00</strong>
+            <span>Avg active day</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="tooltip" class="tooltip" role="status" aria-live="polite"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>

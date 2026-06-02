@@ -1,0 +1,13 @@
+node_modules/
+dist/
+out/
+release/
+work/
+outputs/
+*.log
+.DS_Store
+Thumbs.db
+profile-remake/slopmeter.json
+profile-remake/slopmeter.*.json
+profile-remake/slopmeter.fresh-test.json
+profile-remake/*.tmp.json
