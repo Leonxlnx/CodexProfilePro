@@ -8,13 +8,13 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
 $projectPath = $PSScriptRoot
-$launcherPath = Join-Path $projectPath "launch-profile-remake.ps1"
+$launcherPath = Join-Path $projectPath "launch-codex-profile-pro.ps1"
 $syncPath = Join-Path $projectPath "sync-slopmeter-data.ps1"
 $iconPath = Join-Path $projectPath "assets\profile.ico"
 $powershellExe = Join-Path $env:WINDIR "System32\WindowsPowerShell\v1.0\powershell.exe"
 
 $createdNew = $false
-$mutex = New-Object System.Threading.Mutex($true, "Local\CodexProfileRemakeTray", [ref]$createdNew)
+$mutex = New-Object System.Threading.Mutex($true, "Local\CodexProfileProTray", [ref]$createdNew)
 if (-not $createdNew) {
   exit 0
 }
@@ -46,7 +46,7 @@ Sync-ProfileData
 
 $notifyIcon = New-Object System.Windows.Forms.NotifyIcon
 $notifyIcon.Icon = New-Object System.Drawing.Icon($iconPath)
-$notifyIcon.Text = "Codex Profile Remake"
+$notifyIcon.Text = "CodexProfilePro"
 $notifyIcon.Visible = $true
 
 $menu = New-Object System.Windows.Forms.ContextMenuStrip

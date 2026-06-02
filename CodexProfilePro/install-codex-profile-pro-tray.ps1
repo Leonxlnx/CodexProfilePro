@@ -1,11 +1,11 @@
 param(
-  [string]$ShortcutName = "Codex Profile Remake Tray"
+  [string]$ShortcutName = "CodexProfilePro Tray"
 )
 
 $ErrorActionPreference = "Stop"
 
 $projectPath = $PSScriptRoot
-$trayPath = Join-Path $projectPath "tray-profile-remake.ps1"
+$trayPath = Join-Path $projectPath "tray-codex-profile-pro.ps1"
 $iconPath = Join-Path $projectPath "assets\profile.ico"
 $powershellExe = Join-Path $env:WINDIR "System32\WindowsPowerShell\v1.0\powershell.exe"
 $startupPath = [Environment]::GetFolderPath("Startup")
@@ -17,7 +17,7 @@ $shortcut.TargetPath = $powershellExe
 $shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$trayPath`""
 $shortcut.WorkingDirectory = $projectPath
 $shortcut.IconLocation = "$iconPath,0"
-$shortcut.Description = "Codex Profile Remake tray launcher"
+$shortcut.Description = "CodexProfilePro tray launcher"
 $shortcut.Save()
 
 Start-Process -FilePath $powershellExe -ArgumentList @(

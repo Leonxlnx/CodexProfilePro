@@ -1,9 +1,9 @@
 param(
-  [string]$ShortcutName = "Codex Profile Remake"
+  [string]$ShortcutName = "CodexProfilePro"
 )
 
 $projectPath = $PSScriptRoot
-$launcherPath = Join-Path $projectPath "launch-profile-remake.ps1"
+$launcherPath = Join-Path $projectPath "launch-codex-profile-pro.ps1"
 $powershellExe = Join-Path $env:WINDIR "System32\WindowsPowerShell\v1.0\powershell.exe"
 $desktopPath = [Environment]::GetFolderPath("Desktop")
 $shortcutPath = Join-Path $desktopPath "$ShortcutName.lnk"

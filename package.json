@@ -1,17 +1,17 @@
 {
-  "name": "codex-profile-remake",
-  "version": "0.1.8",
-  "description": "Local Codex profile dashboard with token heatmaps, cost estimates, tray launcher, and desktop builds.",
+  "name": "codex-profile-pro",
+  "version": "0.1.9",
+  "description": "CodexProfilePro is a cross-platform desktop dashboard for Codex usage, token heatmaps, API cost estimates, and hourly tray refresh.",
   "author": {
     "name": "Leon",
     "email": "Leonxlnx@users.noreply.github.com"
   },
-  "main": "profile-remake/electron/main.cjs",
+  "main": "CodexProfilePro/electron/main.cjs",
   "private": true,
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
-    "sync": "node profile-remake/fast-codex-usage-export.mjs profile-remake/slopmeter.json",
+    "sync": "node CodexProfilePro/fast-codex-usage-export.mjs CodexProfilePro/slopmeter.json",
     "test": "npm run test:smoke",
     "test:smoke": "node scripts/smoke.mjs",
     "dist": "electron-builder --publish never",
@@ -20,34 +20,34 @@
     "dist:linux": "electron-builder --linux --publish never"
   },
   "build": {
-    "appId": "com.lexn8.codex-profile-remake",
-    "productName": "Codex Profile",
+    "appId": "com.lexn8.codexprofilepro",
+    "productName": "CodexProfilePro",
     "asar": true,
     "asarUnpack": [
-      "profile-remake/fast-codex-usage-export.mjs"
+      "CodexProfilePro/fast-codex-usage-export.mjs"
     ],
     "files": [
-      "profile-remake/**/*",
-      "!profile-remake/slopmeter.json",
-      "!profile-remake/slopmeter.*.json",
+      "CodexProfilePro/**/*",
+      "!CodexProfilePro/slopmeter.json",
+      "!CodexProfilePro/slopmeter.*.json",
       "package.json"
     ],
     "extraMetadata": {
-      "main": "profile-remake/electron/main.cjs"
+      "main": "CodexProfilePro/electron/main.cjs"
     },
     "win": {
       "target": [
         "nsis",
         "portable"
       ],
-      "icon": "profile-remake/assets/profile.ico"
+      "icon": "CodexProfilePro/assets/profile.ico"
     },
     "mac": {
       "target": [
         "dmg",
         "zip"
       ],
-      "icon": "profile-remake/assets/profile.icns",
+      "icon": "CodexProfilePro/assets/profile.icns",
       "category": "public.app-category.developer-tools"
     },
     "linux": {
@@ -55,7 +55,7 @@
         "AppImage",
         "deb"
       ],
-      "icon": "profile-remake/assets/profile-icon.png",
+      "icon": "CodexProfilePro/assets/profile-icon.png",
       "maintainer": "Leonxlnx <Leonxlnx@users.noreply.github.com>",
       "category": "Development"
     }

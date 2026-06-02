@@ -5,7 +5,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const temp = await fs.mkdtemp(path.join(os.tmpdir(), "codex-profile-smoke-"));
+const temp = await fs.mkdtemp(path.join(os.tmpdir(), "codex-profile-pro-smoke-"));
 const codexHome = path.join(temp, ".codex");
 const sessionDir = path.join(codexHome, "sessions", "2026", "06", "02");
 const output = path.join(temp, "usage.json");
@@ -17,9 +17,9 @@ await fs.writeFile(path.join(sessionDir, "rollout-test.jsonl"), [
   JSON.stringify({ timestamp: "2026-06-02T10:02:00.000Z", type: "event_msg", payload: { type: "token_count", info: { total_token_usage: { input_tokens: 1800, cached_input_tokens: 500, output_tokens: 180, reasoning_output_tokens: 40, total_tokens: 1980 }, last_token_usage: { input_tokens: 800, cached_input_tokens: 100, output_tokens: 80, reasoning_output_tokens: 20, total_tokens: 880 } } } })
 ].join("\n") + "\n", "utf8");
 
-await run("node", ["--check", "profile-remake/app.js"], root);
-await run("node", ["--check", "profile-remake/fast-codex-usage-export.mjs"], root);
-await run("node", ["profile-remake/fast-codex-usage-export.mjs", output], root, {
+await run("node", ["--check", "CodexProfilePro/app.js"], root);
+await run("node", ["--check", "CodexProfilePro/fast-codex-usage-export.mjs"], root);
+await run("node", ["CodexProfilePro/fast-codex-usage-export.mjs", output], root, {
   CODEX_HOME: codexHome,
   PROFILE_EXPORT_END_DATE: "2026-06-02",
 });

@@ -1,8 +1,16 @@
-# Codex Profile
+# CodexProfilePro
 
-Local desktop profile dashboard for Codex token activity.
+CodexProfilePro is a local, cross-platform desktop dashboard for Codex token activity.
 
-It renders the profile UI, daily/weekly/cumulative/cost heatmaps, estimated API-equivalent cost, tray access, and automatic refresh from local Codex session logs.
+It renders the profile UI, daily/weekly/cumulative/cost heatmaps, estimated API-equivalent cost, tray access, and automatic hourly refresh from local Codex session logs.
+
+## Features
+
+- Native desktop app with Windows, macOS, and Linux release builds
+- Windows tray integration with manual refresh and hourly background refresh
+- Daily, weekly, cumulative, and API-equivalent cost heatmaps
+- Local-only Codex log parsing from `~/.codex/sessions/**/*.jsonl`
+- Private usage data kept out of Git by default
 
 ## Run locally
 
@@ -26,7 +34,7 @@ The fast exporter reads:
 It writes:
 
 ```text
-profile-remake/slopmeter.json
+CodexProfilePro/slopmeter.json
 ```
 
 Packaged desktop builds write refreshed data to the app user-data folder.
@@ -48,6 +56,14 @@ npm test
 ```
 
 The smoke test creates a fake Codex session log, runs the exporter against it, and verifies the generated usage JSON.
+
+## Releases
+
+GitHub Actions builds release artifacts for:
+
+- Windows: installer and portable executable
+- macOS: universal DMG and ZIP
+- Linux: AppImage and Debian package
 
 ## Cost Estimates
 

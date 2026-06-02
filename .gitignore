@@ -7,7 +7,7 @@ outputs/
 *.log
 .DS_Store
 Thumbs.db
-profile-remake/slopmeter.json
-profile-remake/slopmeter.*.json
-profile-remake/slopmeter.fresh-test.json
-profile-remake/*.tmp.json
+CodexProfilePro/slopmeter.json
+CodexProfilePro/slopmeter.*.json
+CodexProfilePro/slopmeter.fresh-test.json
+CodexProfilePro/*.tmp.json

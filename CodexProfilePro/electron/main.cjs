@@ -5,6 +5,8 @@ const fsSync = require("node:fs");
 const path = require("node:path");
 
 const REFRESH_INTERVAL_MS = 60 * 60 * 1000;
+const APP_NAME = "CodexProfilePro";
+const APP_DIR = "CodexProfilePro";
 
 let mainWindow = null;
 let tray = null;
@@ -21,11 +23,11 @@ function appRoot() {
 }
 
 function bundledPath(...segments) {
-  return path.join(appRoot(), "profile-remake", ...segments);
+  return path.join(appRoot(), APP_DIR, ...segments);
 }
 
 function unpackedPath(...segments) {
-  return path.join(process.resourcesPath, "app.asar.unpacked", "profile-remake", ...segments);
+  return path.join(process.resourcesPath, "app.asar.unpacked", APP_DIR, ...segments);
 }
 
 function userDataPath(...segments) {
@@ -149,7 +151,7 @@ function createWindow() {
     minWidth: 940,
     minHeight: 700,
     backgroundColor: "#111111",
-    title: "Codex Profile",
+    title: APP_NAME,
     icon: iconPath(),
     autoHideMenuBar: true,
     webPreferences: {
@@ -173,7 +175,7 @@ function createTray() {
   if (tray) return;
   const image = nativeImage.createFromPath(iconPath());
   tray = new Tray(image);
-  tray.setToolTip("Codex Profile");
+  tray.setToolTip(APP_NAME);
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: "Open", click: () => createWindow() },
     { label: "Refresh now", click: () => refreshUsageData().then(() => createWindow()).catch((error) => console.error(error)) },
@@ -193,7 +195,7 @@ function createTray() {
 function startBackgroundRefresh() {
   if (refreshTimer) return;
   refreshTimer = setInterval(() => {
-    refreshUsageData({ broadcast: true }).catch((error) => console.error("[Codex Profile] refresh failed", error));
+    refreshUsageData({ broadcast: true }).catch((error) => console.error(`[${APP_NAME}] refresh failed`, error));
   }, REFRESH_INTERVAL_MS);
 }
 
@@ -207,7 +209,7 @@ app.whenReady().then(async () => {
   createTray();
   createWindow();
   await ensureUsageJson();
-  refreshUsageData({ broadcast: true }).catch((error) => console.error("[Codex Profile] initial refresh failed", error));
+  refreshUsageData({ broadcast: true }).catch((error) => console.error(`[${APP_NAME}] initial refresh failed`, error));
   startBackgroundRefresh();
 });
 
