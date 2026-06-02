@@ -291,8 +291,10 @@ button {
 .day-cell.is-future,
 .day-cell.is-future[data-level] {
   background: var(--cell-empty);
+  animation: none;
   opacity: 0;
   pointer-events: none;
+  visibility: hidden;
 }
 
 .day-cell.is-outside {
