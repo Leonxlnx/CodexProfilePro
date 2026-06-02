@@ -14,6 +14,7 @@
   --cell: 16px;
   --gap: 3px;
   --app-zoom: 1.15;
+  --content-width: 927px;
 }
 
 * {
@@ -152,9 +153,9 @@ button {
 }
 
 .metric-panel {
-  width: min(100%, 914px);
+  width: min(100%, var(--content-width));
   height: 76px;
-  margin: 24px auto 0;
+  margin: 40px auto 0;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: center;
@@ -194,8 +195,8 @@ button {
 }
 
 .activity-card {
-  width: min(100%, 914px);
-  margin: 24px auto 0;
+  width: min(100%, var(--content-width));
+  margin: 34px auto 0;
 }
 
 .activity-header {
@@ -307,7 +308,7 @@ button {
 }
 
 .cost-summary {
-  width: min(100%, 914px);
+  width: min(100%, var(--content-width));
   margin-top: 12px;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
