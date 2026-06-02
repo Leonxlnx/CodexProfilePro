@@ -3,6 +3,9 @@ name: Release
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   workflow_dispatch:
   push:
@@ -27,8 +30,6 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run dist
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: codex-profile-${{ matrix.os }}

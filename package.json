@@ -2,7 +2,10 @@
   "name": "codex-profile-remake",
   "version": "0.1.0",
   "description": "Local Codex profile dashboard with token heatmaps, cost estimates, tray launcher, and desktop builds.",
-  "author": "Leon",
+  "author": {
+    "name": "Leon",
+    "email": "Leonxlnx@users.noreply.github.com"
+  },
   "main": "profile-remake/electron/main.cjs",
   "private": true,
   "scripts": {
@@ -11,10 +14,10 @@
     "sync": "node profile-remake/fast-codex-usage-export.mjs profile-remake/slopmeter.json",
     "test": "npm run test:smoke",
     "test:smoke": "node scripts/smoke.mjs",
-    "dist": "electron-builder",
-    "dist:win": "electron-builder --win",
-    "dist:mac": "electron-builder --mac",
-    "dist:linux": "electron-builder --linux"
+    "dist": "electron-builder --publish never",
+    "dist:win": "electron-builder --win --publish never",
+    "dist:mac": "electron-builder --mac --publish never",
+    "dist:linux": "electron-builder --linux --publish never"
   },
   "build": {
     "appId": "com.lexn8.codex-profile-remake",
@@ -53,6 +56,7 @@
         "deb"
       ],
       "icon": "profile-remake/assets/profile-icon.png",
+      "maintainer": "Leonxlnx <Leonxlnx@users.noreply.github.com>",
       "category": "Development"
     }
   },
