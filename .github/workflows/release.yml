@@ -1,5 +1,8 @@
 name: Release
 
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
   push:
@@ -32,3 +35,12 @@ jobs:
           path: |
             dist/**
             !dist/**/*.blockmap
+      - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            dist/Codex Profile*.exe
+            dist/Codex Profile*.dmg
+            dist/Codex Profile*.zip
+            dist/*.AppImage
+            dist/*.deb

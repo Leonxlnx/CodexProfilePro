@@ -2,6 +2,7 @@
   "name": "codex-profile-remake",
   "version": "0.1.0",
   "description": "Local Codex profile dashboard with token heatmaps, cost estimates, tray launcher, and desktop builds.",
+  "author": "Leon",
   "main": "profile-remake/electron/main.cjs",
   "private": true,
   "scripts": {
