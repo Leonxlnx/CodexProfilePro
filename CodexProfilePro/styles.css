@@ -14,7 +14,7 @@
   --cell: 16px;
   --gap: 3px;
   --app-zoom: 1.15;
-  --content-width: 975.652173913px;
+  --content-width: 976px;
 }
 
 * {
@@ -94,7 +94,7 @@ button {
   display: grid;
   align-content: center;
   margin: 0 auto;
-  padding: 0 40px;
+  padding: 72px 40px 34px;
 }
 
 .identity {
@@ -404,12 +404,15 @@ button {
 
 @media (max-width: 880px) {
   :root {
+    --app-zoom: .98;
+    --content-width: 100%;
     --cell: 11px;
     --gap: 3px;
   }
 
   .profile-shell {
-    padding: 112px 18px 64px;
+    align-content: start;
+    padding: 78px 18px 36px;
   }
 
   .brand-mark {
@@ -418,7 +421,7 @@ button {
 
   .metric-panel {
     height: auto;
-    margin-top: 44px;
+    margin-top: 34px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     padding: 12px 0;
   }
@@ -433,7 +436,7 @@ button {
   }
 
   .activity-card {
-    margin-top: 40px;
+    margin-top: 34px;
   }
 
   .activity-header {
@@ -443,7 +446,9 @@ button {
   }
 
   .tabs {
-    gap: 16px;
+    gap: 18px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
 
   .cost-summary {
@@ -460,15 +465,15 @@ button {
 }
 
 @media (max-width: 560px) {
+  :root {
+    --app-zoom: .86;
+  }
+
   .topbar {
     padding: 0 12px;
   }
 
   .top-actions {
-    position: fixed;
-    top: 9px;
-    left: 280px;
-    right: auto;
     gap: 12px;
   }
 
@@ -498,6 +503,12 @@ button {
 
   .activity-header {
     display: grid;
+    gap: 14px;
+  }
+
+  .tabs {
+    justify-content: start;
+    gap: 16px;
   }
 
   .heatmap-wrap {
@@ -517,5 +528,111 @@ button {
 
   .cost-card:first-child {
     border-top: 0;
+  }
+}
+
+@media (max-height: 760px) {
+  :root {
+    --app-zoom: 1;
+  }
+
+  .profile-shell {
+    align-content: start;
+    padding-top: 64px;
+  }
+
+  .brand-mark {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 18px;
+  }
+
+  .identity h1 {
+    font-size: 28px;
+  }
+
+  .handle-row {
+    margin-top: 10px;
+  }
+
+  .metric-panel {
+    margin-top: 28px;
+  }
+
+  .activity-card {
+    margin-top: 28px;
+  }
+}
+
+@media (max-height: 620px) {
+  :root {
+    --app-zoom: .86;
+  }
+
+  .profile-shell {
+    padding-top: 62px;
+    padding-bottom: 24px;
+  }
+
+  .brand-mark {
+    width: 58px;
+    height: 58px;
+    margin-bottom: 14px;
+  }
+
+  .metric-panel {
+    margin-top: 22px;
+  }
+
+  .metric {
+    gap: 6px;
+  }
+
+  .activity-card {
+    margin-top: 22px;
+  }
+
+  .activity-header {
+    margin-bottom: 10px;
+  }
+
+  .heatmap-wrap {
+    padding-bottom: 28px;
+  }
+
+  .cost-summary {
+    margin-top: 18px;
+  }
+}
+
+@media (min-width: 881px) and (max-height: 620px) {
+  .metric-panel {
+    height: 66px;
+  }
+
+  .metric {
+    height: 42px;
+  }
+}
+
+@media (max-height: 500px) {
+  :root {
+    --app-zoom: .76;
+  }
+
+  .topbar {
+    height: 42px;
+  }
+
+  .profile-shell {
+    padding-top: 54px;
+  }
+
+  .metric-panel {
+    margin-top: 18px;
+  }
+
+  .activity-card {
+    margin-top: 18px;
   }
 }

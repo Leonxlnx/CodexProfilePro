@@ -5,6 +5,7 @@ const fsSync = require("node:fs");
 const path = require("node:path");
 
 const REFRESH_INTERVAL_MS = 60 * 60 * 1000;
+const REFRESH_TIMEOUT_MS = 20 * 60 * 1000;
 const APP_NAME = "CodexProfilePro";
 const APP_DIR = "CodexProfilePro";
 
@@ -12,6 +13,7 @@ let mainWindow = null;
 let tray = null;
 let refreshTimer = null;
 let isRefreshing = false;
+const startHidden = process.argv.includes("--hidden") || process.argv.includes("--tray");
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -42,6 +44,20 @@ function fallbackUsageJsonPath() {
   return bundledPath("slopmeter.json");
 }
 
+function externalSeedUsageJsonPath() {
+  if (!app.isPackaged) {
+    return null;
+  }
+  return path.resolve(path.dirname(process.execPath), "..", "..", APP_DIR, "slopmeter.json");
+}
+
+function isUsageDataEmpty(data) {
+  const provider = data?.providers?.[0];
+  const daily = Array.isArray(provider?.daily) ? provider.daily : [];
+  const total = provider?.insights?.totalTokens?.total ?? provider?.insights?.mostUsedModel?.tokens?.total ?? 0;
+  return daily.length === 0 || Number(total) === 0;
+}
+
 function exporterPath() {
   if (app.isPackaged) {
     return unpackedPath("fast-codex-usage-export.mjs");
@@ -60,13 +76,20 @@ function iconPath() {
 async function ensureUsageJson() {
   const target = usageJsonPath();
   if (fsSync.existsSync(target)) {
+    try {
+      const current = JSON.parse(await fs.readFile(target, "utf8"));
+      if (isUsageDataEmpty(current)) {
+        await copySeedUsageJson(target);
+      }
+    } catch {
+      await copySeedUsageJson(target);
+    }
     return target;
   }
 
   await fs.mkdir(path.dirname(target), { recursive: true });
-  const fallback = fallbackUsageJsonPath();
-  if (fsSync.existsSync(fallback)) {
-    await fs.copyFile(fallback, target);
+  if (await copySeedUsageJson(target)) {
+    return target;
   } else {
     await fs.writeFile(target, JSON.stringify({
       version: "empty",
@@ -78,9 +101,41 @@ async function ensureUsageJson() {
   return target;
 }
 
+async function copySeedUsageJson(target) {
+  const candidates = [
+    fallbackUsageJsonPath(),
+    externalSeedUsageJsonPath()
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    if (!fsSync.existsSync(candidate)) {
+      continue;
+    }
+    try {
+      const payload = JSON.parse(await fs.readFile(candidate, "utf8"));
+      if (!isUsageDataEmpty(payload)) {
+        await fs.copyFile(candidate, target);
+        return true;
+      }
+    } catch {
+      continue;
+    }
+  }
+  return false;
+}
+
 async function readUsageData() {
   const target = await ensureUsageJson();
   return JSON.parse(await fs.readFile(target, "utf8"));
+}
+
+async function isUsageJsonFresh(maxAgeMs = REFRESH_INTERVAL_MS) {
+  try {
+    const stats = await fs.stat(usageJsonPath());
+    return Date.now() - stats.mtimeMs < maxAgeMs;
+  } catch {
+    return false;
+  }
 }
 
 function nodeRunner() {
@@ -110,15 +165,20 @@ async function refreshUsageData({ broadcast = true } = {}) {
         cwd: app.getPath("home"),
         env: nodeEnv(),
         windowsHide: true,
-        stdio: ["ignore", "pipe", "pipe"]
+        stdio: ["ignore", "ignore", "pipe"]
       });
 
       let stderr = "";
+      const timeout = setTimeout(() => {
+        child.kill();
+        reject(new Error(`Usage export timed out after ${Math.round(REFRESH_TIMEOUT_MS / 60000)} minutes`));
+      }, REFRESH_TIMEOUT_MS);
       child.stderr.on("data", (chunk) => {
         stderr += chunk.toString();
       });
       child.on("error", reject);
       child.on("close", (code) => {
+        clearTimeout(timeout);
         if (code === 0) resolve();
         else reject(new Error(stderr.trim() || `Usage export failed with code ${code}`));
       });
@@ -146,10 +206,10 @@ function createWindow() {
   }
 
   mainWindow = new BrowserWindow({
-    width: 1220,
-    height: 860,
-    minWidth: 940,
-    minHeight: 700,
+    width: 1040,
+    height: 760,
+    minWidth: 560,
+    minHeight: 430,
     backgroundColor: "#111111",
     title: APP_NAME,
     icon: iconPath(),
@@ -206,10 +266,14 @@ app.whenReady().then(async () => {
   ipcMain.handle("profile:refresh-usage-data", () => refreshUsageData({ broadcast: false }));
   ipcMain.handle("profile:get-app-info", () => ({ version: app.getVersion(), dataPath: usageJsonPath() }));
 
-  createTray();
-  createWindow();
   await ensureUsageJson();
-  refreshUsageData({ broadcast: true }).catch((error) => console.error(`[${APP_NAME}] initial refresh failed`, error));
+  createTray();
+  if (!startHidden) {
+    createWindow();
+  }
+  if (!(await isUsageJsonFresh())) {
+    refreshUsageData({ broadcast: true }).catch((error) => console.error(`[${APP_NAME}] initial refresh failed`, error));
+  }
   startBackgroundRefresh();
 });
 

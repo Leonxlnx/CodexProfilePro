@@ -1,7 +1,3 @@
-param(
-  [int]$Port = 8765
-)
-
 $ErrorActionPreference = "Stop"
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -12,6 +8,11 @@ $launcherPath = Join-Path $projectPath "launch-codex-profile-pro.ps1"
 $syncPath = Join-Path $projectPath "sync-slopmeter-data.ps1"
 $iconPath = Join-Path $projectPath "assets\profile.ico"
 $powershellExe = Join-Path $env:WINDIR "System32\WindowsPowerShell\v1.0\powershell.exe"
+$repoRoot = Split-Path -Parent $projectPath
+$packagedExe = Join-Path $repoRoot "dist\win-unpacked\CodexProfilePro.exe"
+$localUsagePath = Join-Path $projectPath "slopmeter.json"
+$appDataUsageDir = Join-Path $env:APPDATA "codex-profile-pro"
+$appDataUsagePath = Join-Path $appDataUsageDir "slopmeter.json"
 
 $createdNew = $false
 $mutex = New-Object System.Threading.Mutex($true, "Local\CodexProfileProTray", [ref]$createdNew)
@@ -20,15 +21,22 @@ if (-not $createdNew) {
 }
 
 function Open-ProfileApp {
-  $args = @(
-    "-NoProfile",
-    "-ExecutionPolicy", "Bypass",
-    "-WindowStyle", "Hidden",
-    "-File", "`"$launcherPath`"",
-    "-Port", "$Port"
-  )
+  if (Test-Path -LiteralPath $packagedExe) {
+    Start-Process -FilePath $packagedExe -WorkingDirectory (Split-Path -Parent $packagedExe) | Out-Null
+  } else {
+    Start-Process -FilePath $powershellExe -ArgumentList @(
+      "-NoProfile",
+      "-ExecutionPolicy", "Bypass",
+      "-WindowStyle", "Hidden",
+      "-File", "`"$launcherPath`""
+    ) -WindowStyle Hidden -WorkingDirectory $projectPath | Out-Null
+  }
+}
 
-  Start-Process -FilePath $powershellExe -ArgumentList $args -WindowStyle Hidden -WorkingDirectory $projectPath | Out-Null
+function Start-BackgroundApp {
+  if (Test-Path -LiteralPath $packagedExe) {
+    Start-Process -FilePath $packagedExe -ArgumentList @("--hidden") -WindowStyle Hidden -WorkingDirectory (Split-Path -Parent $packagedExe) | Out-Null
+  }
 }
 
 function Sync-ProfileData {
@@ -42,7 +50,36 @@ function Sync-ProfileData {
   }
 }
 
+function Test-UsageFileEmpty {
+  param([string]$Path)
+
+  if (-not (Test-Path -LiteralPath $Path)) {
+    return $true
+  }
+
+  try {
+    $json = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+    $provider = @($json.providers)[0]
+    return (-not $provider) -or (-not $provider.daily) -or ($provider.daily.Count -eq 0)
+  } catch {
+    return $true
+  }
+}
+
+function Sync-AppDataSeed {
+  if (-not (Test-Path -LiteralPath $localUsagePath)) {
+    return
+  }
+
+  New-Item -ItemType Directory -Force -Path $appDataUsageDir | Out-Null
+  if (Test-UsageFileEmpty -Path $appDataUsagePath) {
+    Copy-Item -LiteralPath $localUsagePath -Destination $appDataUsagePath -Force
+  }
+}
+
+Sync-AppDataSeed
 Sync-ProfileData
+Start-BackgroundApp
 
 $notifyIcon = New-Object System.Windows.Forms.NotifyIcon
 $notifyIcon.Icon = New-Object System.Drawing.Icon($iconPath)

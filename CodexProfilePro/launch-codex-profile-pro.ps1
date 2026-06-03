@@ -1,70 +1,49 @@
-param(
-  [int]$Port = 8765
-)
-
 $ErrorActionPreference = "Stop"
 
 $projectPath = $PSScriptRoot
-$appUrl = "http://127.0.0.1:$Port/"
-$syncPath = Join-Path $projectPath "sync-slopmeter-data.ps1"
+$repoRoot = Split-Path -Parent $projectPath
+$packagedExe = Join-Path $repoRoot "dist\win-unpacked\CodexProfilePro.exe"
+$localUsagePath = Join-Path $projectPath "slopmeter.json"
+$appDataUsageDir = Join-Path $env:APPDATA "codex-profile-pro"
+$appDataUsagePath = Join-Path $appDataUsageDir "slopmeter.json"
 
-if (Test-Path -LiteralPath $syncPath) {
-  $powershellExe = Join-Path $env:WINDIR "System32\WindowsPowerShell\v1.0\powershell.exe"
-  Start-Process -FilePath $powershellExe -ArgumentList @(
-    "-NoProfile",
-    "-ExecutionPolicy", "Bypass",
-    "-WindowStyle", "Hidden",
-    "-File", "`"$syncPath`""
-  ) -WindowStyle Hidden -WorkingDirectory $projectPath | Out-Null
-}
+function Test-UsageFileEmpty {
+  param([string]$Path)
 
-function Get-ExecutablePath {
-  param([string[]]$Paths)
-  foreach ($path in $Paths) {
-    if (Test-Path $path) {
-      return $path
-    }
-  }
-  return $null
-}
-
-function Get-BrowserPath {
-  $paths = @(
-    (Join-Path $env:ProgramFiles "Google\Chrome\Application\chrome.exe"),
-    (Join-Path ${env:ProgramFiles(x86)} "Google\Chrome\Application\chrome.exe"),
-    (Join-Path $env:LocalAppData "Google\Chrome\Application\chrome.exe"),
-    (Join-Path ${env:ProgramFiles(x86)} "Microsoft\Edge\Application\msedge.exe"),
-    (Join-Path $env:ProgramFiles "Microsoft\Edge\Application\msedge.exe")
-  )
-  return Get-ExecutablePath -Paths $paths
-}
-
-function Get-PythonCommand {
-  $candidates = @("python", "python3", "py")
-  foreach ($candidate in $candidates) {
-    if (Get-Command $candidate -ErrorAction SilentlyContinue) {
-      return $candidate
-    }
-  }
-  return $null
-}
-
-if (-not (Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue | Where-Object { $_.State -eq "Listen" })) {
-  $python = Get-PythonCommand
-  if (-not $python) {
-    throw "Python not found. Install Python 3 to run the local server."
+  if (-not (Test-Path -LiteralPath $Path)) {
+    return $true
   }
 
-  $argList = @("-m", "http.server", "$Port", "--directory", $projectPath)
-  Start-Process -FilePath $python -ArgumentList $argList -WindowStyle Hidden -WorkingDirectory $projectPath | Out-Null
+  try {
+    $json = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+    $provider = @($json.providers)[0]
+    return (-not $provider) -or (-not $provider.daily) -or ($provider.daily.Count -eq 0)
+  } catch {
+    return $true
+  }
 }
 
-Start-Sleep -Milliseconds 600
+function Sync-AppDataSeed {
+  if (-not (Test-Path -LiteralPath $localUsagePath)) {
+    return
+  }
 
-$browser = Get-BrowserPath
-if ($browser) {
-  $args = @("--app=$appUrl", "--new-window")
-  Start-Process -FilePath $browser -ArgumentList $args -WorkingDirectory $projectPath | Out-Null
-} else {
-  Start-Process $appUrl | Out-Null
+  New-Item -ItemType Directory -Force -Path $appDataUsageDir | Out-Null
+  if (Test-UsageFileEmpty -Path $appDataUsagePath) {
+    Copy-Item -LiteralPath $localUsagePath -Destination $appDataUsagePath -Force
+  }
 }
+
+Sync-AppDataSeed
+
+if (Test-Path -LiteralPath $packagedExe) {
+  Start-Process -FilePath $packagedExe -WorkingDirectory (Split-Path -Parent $packagedExe) | Out-Null
+  return
+}
+
+$npm = Get-Command npm -ErrorAction SilentlyContinue
+if (-not $npm) {
+  throw "CodexProfilePro.exe was not found and npm is not available. Build with 'npm run dist:win' or install the release build."
+}
+
+Start-Process -FilePath $npm.Source -ArgumentList @("start") -WorkingDirectory $repoRoot | Out-Null

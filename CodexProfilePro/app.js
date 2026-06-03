@@ -108,7 +108,9 @@ function startAutoRefresh() {
 }
 
 function renderStats() {
-  const total = state.provider.insights.totalTokens?.total ?? state.provider.insights.mostUsedModel.tokens.total;
+  const total = state.provider.insights.totalTokens?.total
+    ?? state.daily.reduce((sum, item) => sum + (item.total || 0), 0)
+    ?? state.provider.insights.mostUsedModel.tokens.total;
   const peak = state.daily.reduce((best, item) => (item.total > best.total ? item : best), state.daily[0]);
   const streaks = state.provider.insights.streaks;
 
