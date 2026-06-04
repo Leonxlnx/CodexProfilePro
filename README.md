@@ -1,32 +1,82 @@
 # CodexProfilePro
 
-CodexProfilePro is a local, cross-platform desktop dashboard for Codex token activity.
+CodexProfilePro is a local, cross-platform desktop dashboard for Codex usage. It turns local Codex session logs into a profile-style activity page with token heatmaps, streaks, task stats, cost estimates, tray access, and hourly refresh.
 
-It renders the profile UI, daily/weekly/cumulative/cost heatmaps, estimated API-equivalent cost, tray access, and automatic hourly refresh from local Codex session logs.
+## Download
+
+Get the latest build from the release page:
+
+[CodexProfilePro v1.0.5](https://github.com/Leonxlnx/CodexProfilePro/releases/tag/v1.0.5)
+
+- Windows: use `CodexProfilePro.Setup.1.0.5.exe` for the installer, or `CodexProfilePro.1.0.5.exe` for portable use.
+- macOS: use `CodexProfilePro-1.0.5-universal.dmg`, or the universal ZIP.
+- Linux: use `CodexProfilePro-1.0.5.AppImage`, or `codex-profile-pro_1.0.5_amd64.deb`.
+
+## Use Guide
+
+1. Install or open the app for your platform.
+2. CodexProfilePro reads local Codex logs from `~/.codex/sessions/**/*.jsonl`.
+3. Use the refresh button in the bottom-left corner to rebuild the data immediately.
+4. Keep the app running in the tray for hourly background refresh.
+5. Use `Edit` in the top-right corner to set your local name, handle, plan, and profile picture.
+
+If no Codex logs exist on the machine, the app opens but the dashboard can be empty until Codex creates session logs.
 
 ## Features
 
-- Native desktop app with Windows, macOS, and Linux release builds
-- Windows tray integration with manual refresh and hourly background refresh
+- Native desktop app for Windows, macOS, and Linux
 - Daily, weekly, cumulative, and API-equivalent cost heatmaps
 - Local-only Codex log parsing from `~/.codex/sessions/**/*.jsonl`
-- Editable local profile label/photo with safe fallbacks and no bundled personal profile photo
+- Hourly refresh while the desktop app is running
+- Windows tray support with manual refresh
+- Editable local profile settings
 - Private usage data kept out of Git by default
 
-## Run locally
+## Data And Privacy
 
-```powershell
-npm install
-npm start
+CodexProfilePro does not upload usage data. It reads local session logs and writes generated dashboard data into the app user-data folder.
+
+Packaged desktop builds write usage data here:
+
+```text
+Windows: %APPDATA%\codex-profile-pro\slopmeter.json
+macOS: ~/Library/Application Support/codex-profile-pro/slopmeter.json
+Linux: ~/.config/codex-profile-pro/slopmeter.json
 ```
 
-## Refresh data
+If your Codex logs are not under `~/.codex`, set `CODEX_HOME` to the correct Codex data folder before launching the app.
+
+## Profile Settings
+
+Profile data is not hardcoded into the release. Each machine can configure its own profile with the in-app `Edit` button.
+
+Saved profile settings live in the app user-data folder:
+
+```text
+profile.json
+profile-avatar.<ext>
+```
+
+Environment overrides are also supported:
+
+```text
+CODEX_PROFILE_NAME
+CODEX_PROFILE_HANDLE
+CODEX_PROFILE_PLAN
+CODEX_PROFILE_AVATAR
+```
+
+The app checks environment overrides first, then local profile settings, then safe profile fields from local Codex state. If none exist, it falls back to `Codex User` with no profile picture.
+
+## Refresh Data Manually
+
+For development or source checkout usage:
 
 ```powershell
 npm run sync
 ```
 
-The fast exporter reads:
+The exporter reads:
 
 ```text
 ~/.codex/sessions/**/*.jsonl
@@ -38,13 +88,23 @@ It writes:
 CodexProfilePro/slopmeter.json
 ```
 
-Packaged desktop builds write refreshed data to the app user-data folder.
+## Cost Estimates
 
-## Profile Display
+The Cost tab is an API-equivalent estimate. It uses official OpenAI API pricing where available:
 
-CodexProfilePro avoids bundling a personal profile photo. It uses `CODEX_PROFILE_NAME`, `CODEX_PROFILE_HANDLE`, `CODEX_PROFILE_PLAN`, and `CODEX_PROFILE_AVATAR` overrides first, then a local `profile.json` saved by the in-app Edit button, then safe profile fields from local Codex state. If none exist, it falls back to `Codex User` with no profile picture.
+- `gpt-5.5`
+- `gpt-5.4`
+- `gpt-5.4-mini`
+- `gpt-5.3-codex`
 
-The Edit button stores profile settings in the app user-data folder, so each machine can use its own name, handle, plan, and image without committing personal files to the repo.
+`GPT-5.3-Codex-Spark` is treated as a `gpt-5.3-codex` estimate because OpenAI marks Spark credit rates as research-preview/not final.
+
+## Run From Source
+
+```powershell
+npm install
+npm start
+```
 
 ## Build
 
@@ -63,22 +123,3 @@ npm test
 ```
 
 The smoke test creates a fake Codex session log, runs the exporter against it, and verifies the generated usage JSON.
-
-## Releases
-
-GitHub Actions builds release artifacts for:
-
-- Windows: installer and portable executable
-- macOS: universal DMG and ZIP
-- Linux: AppImage and Debian package
-
-## Cost Estimates
-
-The Cost tab is an API-equivalent estimate. It uses official OpenAI API pricing where available:
-
-- `gpt-5.5`
-- `gpt-5.4`
-- `gpt-5.4-mini`
-- `gpt-5.3-codex`
-
-`GPT-5.3-Codex-Spark` is treated as a `gpt-5.3-codex` estimate because OpenAI marks Spark credit rates as research-preview/not final.
