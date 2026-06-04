@@ -1,15 +1,15 @@
-const { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, shell } = require("electron");
-const { spawn, spawnSync } = require("node:child_process");
+const { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, shell, dialog } = require("electron");
+const { spawn } = require("node:child_process");
 const fs = require("node:fs/promises");
 const fsSync = require("node:fs");
-const os = require("node:os");
 const path = require("node:path");
-const { pathToFileURL } = require("node:url");
+const { fileURLToPath, pathToFileURL } = require("node:url");
 
 const REFRESH_INTERVAL_MS = 60 * 60 * 1000;
 const REFRESH_TIMEOUT_MS = 20 * 60 * 1000;
 const APP_NAME = "CodexProfilePro";
 const APP_DIR = "CodexProfilePro";
+const PROFILE_FILE = "profile.json";
 
 let mainWindow = null;
 let tray = null;
@@ -40,6 +40,10 @@ function userDataPath(...segments) {
 
 function usageJsonPath() {
   return userDataPath("slopmeter.json");
+}
+
+function profileJsonPath() {
+  return userDataPath(PROFILE_FILE);
 }
 
 function codexHomePath() {
@@ -142,17 +146,90 @@ async function readProfileInfo() {
     plan: cleanProfileText(process.env.CODEX_PROFILE_PLAN, 32),
     avatarUrl: await resolveAvatarUrl(process.env.CODEX_PROFILE_AVATAR || process.env.CODEX_PROFILE_IMAGE),
   };
+  const savedProfile = await readSavedProfile();
   const stateProfile = await readCodexStateProfile();
-  const fallbackName = cleanProfileText(gitConfigValue("user.name")) || cleanProfileText(os.userInfo().username) || "Codex User";
-  const avatarUrl = envProfile.avatarUrl || stateProfile.avatarUrl || "";
+  const avatarUrl = envProfile.avatarUrl || savedProfile.avatarUrl || stateProfile.avatarUrl || "";
 
   return {
-    name: envProfile.name || stateProfile.name || fallbackName,
-    handle: envProfile.handle || stateProfile.handle || "",
-    plan: envProfile.plan || stateProfile.plan || "",
+    name: envProfile.name || savedProfile.name || stateProfile.name || "Codex User",
+    handle: envProfile.handle || savedProfile.handle || stateProfile.handle || "",
+    plan: envProfile.plan || savedProfile.plan || stateProfile.plan || "",
+    avatarPath: savedProfile.avatarPath || "",
     avatarUrl,
     hasAvatar: Boolean(avatarUrl),
   };
+}
+
+async function readSavedProfile() {
+  const profilePath = profileJsonPath();
+  if (!fsSync.existsSync(profilePath)) {
+    return {};
+  }
+
+  try {
+    const payload = JSON.parse(await fs.readFile(profilePath, "utf8"));
+    const avatarPath = cleanProfileText(payload.avatarPath || payload.avatarUrl || payload.avatar, 2048);
+    return {
+      name: cleanProfileText(payload.name),
+      handle: normalizeHandle(payload.handle),
+      plan: cleanProfileText(payload.plan, 32),
+      avatarPath,
+      avatarUrl: await resolveAvatarUrl(avatarPath),
+    };
+  } catch {
+    return {};
+  }
+}
+
+async function saveProfileInfo(_event, payload = {}) {
+  const avatarPath = cleanProfileText(payload.avatarPath || payload.avatarUrl || payload.avatar, 2048);
+  const profile = {
+    name: cleanProfileText(payload.name) || "Codex User",
+    handle: normalizeHandle(payload.handle),
+    plan: cleanProfileText(payload.plan, 32),
+    avatarPath,
+  };
+
+  await fs.mkdir(app.getPath("userData"), { recursive: true });
+  await fs.writeFile(profileJsonPath(), JSON.stringify(profile, null, 2), "utf8");
+  return readProfileInfo();
+}
+
+async function selectProfileAvatar() {
+  const result = await dialog.showOpenDialog(mainWindow || undefined, {
+    title: "Choose profile image",
+    properties: ["openFile"],
+    filters: [
+      { name: "Images", extensions: ["avif", "gif", "jpg", "jpeg", "jfif", "png", "webp"] },
+    ],
+  });
+  const source = result.filePaths?.[0];
+  if (result.canceled || !source) {
+    return null;
+  }
+
+  const target = await copyProfileAvatar(source);
+  return {
+    avatarPath: target,
+    avatarUrl: await resolveAvatarUrl(target),
+  };
+}
+
+async function copyProfileAvatar(source) {
+  const absoluteSource = pathFromProfileInput(source);
+  if (!absoluteSource || !fsSync.existsSync(absoluteSource)) {
+    throw new Error("Selected profile image does not exist");
+  }
+
+  const ext = path.extname(absoluteSource).toLowerCase();
+  if (!/\.(avif|gif|jpe?g|jfif|png|webp)$/i.test(ext)) {
+    throw new Error("Selected profile image must be an image file");
+  }
+
+  await fs.mkdir(app.getPath("userData"), { recursive: true });
+  const target = userDataPath(`profile-avatar${ext}`);
+  await fs.copyFile(absoluteSource, target);
+  return target;
 }
 
 async function readCodexStateProfile() {
@@ -248,10 +325,8 @@ async function resolveAvatarUrl(value) {
     return candidate;
   }
 
-  const absolutePath = path.isAbsolute(candidate)
-    ? candidate
-    : path.resolve(codexHomePath(), candidate);
-  if (!/\.(avif|gif|jpe?g|png|webp)$/i.test(absolutePath)) {
+  const absolutePath = pathFromProfileInput(candidate) || path.resolve(codexHomePath(), candidate);
+  if (!/\.(avif|gif|jpe?g|jfif|png|webp)$/i.test(absolutePath)) {
     return "";
   }
 
@@ -264,16 +339,16 @@ async function resolveAvatarUrl(value) {
   }
 }
 
-function gitConfigValue(key) {
-  try {
-    const result = spawnSync("git", ["config", "--global", key], {
-      encoding: "utf8",
-      windowsHide: true,
-    });
-    return result.status === 0 ? result.stdout.trim() : "";
-  } catch {
-    return "";
+function pathFromProfileInput(candidate) {
+  if (!candidate) return "";
+  if (/^file:\/\//i.test(candidate)) {
+    try {
+      return fileURLToPath(candidate);
+    } catch {
+      return "";
+    }
   }
+  return path.isAbsolute(candidate) ? candidate : "";
 }
 
 async function isUsageJsonFresh(maxAgeMs = REFRESH_INTERVAL_MS) {
@@ -423,6 +498,8 @@ app.whenReady().then(async () => {
   ipcMain.handle("profile:read-usage-data", readUsageData);
   ipcMain.handle("profile:refresh-usage-data", () => refreshUsageData({ broadcast: false }));
   ipcMain.handle("profile:get-profile-info", readProfileInfo);
+  ipcMain.handle("profile:save-profile-info", saveProfileInfo);
+  ipcMain.handle("profile:select-profile-avatar", selectProfileAvatar);
   ipcMain.handle("profile:get-app-info", () => ({ version: app.getVersion(), dataPath: usageJsonPath() }));
 
   await ensureUsageJson();

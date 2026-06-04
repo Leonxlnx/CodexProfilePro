@@ -11,6 +11,15 @@
   <body>
     <header class="topbar">
       <div class="page-title">Profile</div>
+      <nav class="top-actions" aria-label="Profile actions">
+        <button id="editProfileButton" class="ghost-action" type="button" aria-label="Edit profile">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m4.5 16.9-.7 3.3 3.3-.7L18.9 7.7a2 2 0 0 0 0-2.8l-.8-.8a2 2 0 0 0-2.8 0L4.5 16.9Z" />
+            <path d="m14 5.4 4.2 4.2" />
+          </svg>
+          <span class="action-label">Edit</span>
+        </button>
+      </nav>
     </header>
 
     <main class="profile-shell">
@@ -95,6 +104,43 @@
       <span id="refreshLabel" class="refresh-label" aria-hidden="true"></span>
       <span class="sr-only">Refresh data</span>
     </button>
+
+    <div id="profileDialog" class="dialog-backdrop" hidden>
+      <section class="profile-dialog" role="dialog" aria-modal="true" aria-labelledby="profileDialogTitle">
+        <div class="dialog-head">
+          <h2 id="profileDialogTitle">Edit profile</h2>
+          <button id="closeProfileDialog" class="icon-button" type="button" aria-label="Close profile editor">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 6l12 12" />
+              <path d="M18 6 6 18" />
+            </svg>
+          </button>
+        </div>
+        <form id="profileForm" class="profile-form">
+          <label>
+            <span>Name</span>
+            <input id="profileNameInput" name="name" autocomplete="name" maxlength="80" />
+          </label>
+          <label>
+            <span>Handle</span>
+            <input id="profileHandleInput" name="handle" autocomplete="username" maxlength="64" />
+          </label>
+          <label>
+            <span>Plan</span>
+            <input id="profilePlanInput" name="plan" maxlength="32" />
+          </label>
+          <label>
+            <span>Profile image path or URL</span>
+            <input id="profileAvatarInput" name="avatar" maxlength="2048" />
+          </label>
+          <div class="dialog-actions">
+            <button id="chooseAvatarButton" class="secondary-action" type="button">Choose image</button>
+            <button id="clearAvatarButton" class="secondary-action" type="button">Clear image</button>
+            <button class="primary-action" type="submit">Save</button>
+          </div>
+        </form>
+      </section>
+    </div>
 
     <div id="tooltip" class="tooltip" role="status" aria-live="polite"></div>
     <script src="./app.js"></script>

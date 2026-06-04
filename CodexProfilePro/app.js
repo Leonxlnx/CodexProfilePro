@@ -3,6 +3,7 @@ const DEFAULT_PROFILE = {
   handle: "",
   plan: "",
   avatarUrl: "",
+  avatarPath: "",
   longestTaskSeconds: 538143,
 };
 
@@ -30,6 +31,7 @@ const state = {
   refreshStartedAt: 0,
   refreshElapsedTimer: null,
   refreshResultTimer: null,
+  profile: { ...DEFAULT_PROFILE },
 };
 
 const els = {
@@ -57,6 +59,16 @@ const els = {
   averageCost: document.getElementById("averageCost"),
   refreshButton: document.getElementById("refreshButton"),
   refreshLabel: document.getElementById("refreshLabel"),
+  editProfileButton: document.getElementById("editProfileButton"),
+  profileDialog: document.getElementById("profileDialog"),
+  closeProfileDialog: document.getElementById("closeProfileDialog"),
+  profileForm: document.getElementById("profileForm"),
+  profileNameInput: document.getElementById("profileNameInput"),
+  profileHandleInput: document.getElementById("profileHandleInput"),
+  profilePlanInput: document.getElementById("profilePlanInput"),
+  profileAvatarInput: document.getElementById("profileAvatarInput"),
+  chooseAvatarButton: document.getElementById("chooseAvatarButton"),
+  clearAvatarButton: document.getElementById("clearAvatarButton"),
   tooltip: document.getElementById("tooltip"),
 };
 
@@ -68,6 +80,25 @@ async function init() {
   renderTabs();
   renderHeatmap();
   els.refreshButton?.addEventListener("click", refreshNow);
+  els.editProfileButton?.addEventListener("click", openProfileDialog);
+  els.closeProfileDialog?.addEventListener("click", closeProfileDialog);
+  els.profileDialog?.addEventListener("click", (event) => {
+    if (event.target === els.profileDialog) {
+      closeProfileDialog();
+    }
+  });
+  els.profileForm?.addEventListener("submit", saveProfileFromDialog);
+  els.chooseAvatarButton?.addEventListener("click", chooseProfileAvatar);
+  els.clearAvatarButton?.addEventListener("click", () => {
+    if (els.profileAvatarInput) {
+      els.profileAvatarInput.value = "";
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !els.profileDialog?.hidden) {
+      closeProfileDialog();
+    }
+  });
   startAutoRefresh();
   window.profileRemake?.onUsageDataUpdated?.((data) => {
     applyData(data);
@@ -162,10 +193,12 @@ async function loadProfileInfo() {
     if (window.profileRemake?.getProfileInfo) {
       profile = await window.profileRemake.getProfileInfo();
     }
-    renderProfile({ ...DEFAULT_PROFILE, ...(profile || {}) });
+    state.profile = { ...DEFAULT_PROFILE, ...(profile || {}) };
+    renderProfile(state.profile);
   } catch (error) {
     console.error("Profile info failed", error);
-    renderProfile(DEFAULT_PROFILE);
+    state.profile = { ...DEFAULT_PROFILE };
+    renderProfile(state.profile);
   }
 }
 
@@ -190,11 +223,17 @@ function renderProfile(profile) {
   }
 
   if (avatarUrl && els.profileAvatar) {
+    if (els.brandMark) {
+      els.brandMark.hidden = false;
+    }
     els.profileAvatar.src = avatarUrl;
     els.profileAvatar.hidden = false;
     els.profileAvatar.onerror = () => {
       els.profileAvatar.hidden = true;
       els.profileAvatar.removeAttribute("src");
+      if (els.brandMark) {
+        els.brandMark.hidden = true;
+      }
       els.brandMark?.classList.add("is-empty");
     };
     els.brandMark?.classList.remove("is-empty");
@@ -203,7 +242,59 @@ function renderProfile(profile) {
     if (els.profileAvatar) {
       els.profileAvatar.hidden = true;
     }
+    if (els.brandMark) {
+      els.brandMark.hidden = true;
+    }
     els.brandMark?.classList.add("is-empty");
+  }
+}
+
+function openProfileDialog() {
+  if (!els.profileDialog) return;
+  els.profileNameInput.value = cleanDisplayText(state.profile.name);
+  els.profileHandleInput.value = cleanDisplayText(state.profile.handle);
+  els.profilePlanInput.value = cleanDisplayText(state.profile.plan);
+  els.profileAvatarInput.value = cleanDisplayText(state.profile.avatarPath || state.profile.avatarUrl, 2048);
+  els.profileDialog.hidden = false;
+  els.profileNameInput?.focus();
+}
+
+function closeProfileDialog() {
+  if (els.profileDialog) {
+    els.profileDialog.hidden = true;
+  }
+}
+
+async function chooseProfileAvatar() {
+  if (!window.profileRemake?.selectProfileAvatar) return;
+  try {
+    const selected = await window.profileRemake.selectProfileAvatar();
+    if (selected?.avatarPath && els.profileAvatarInput) {
+      els.profileAvatarInput.value = selected.avatarPath;
+    }
+  } catch (error) {
+    console.error("Profile image selection failed", error);
+  }
+}
+
+async function saveProfileFromDialog(event) {
+  event.preventDefault();
+  const profile = {
+    name: els.profileNameInput?.value || "",
+    handle: els.profileHandleInput?.value || "",
+    plan: els.profilePlanInput?.value || "",
+    avatarPath: els.profileAvatarInput?.value || "",
+  };
+
+  try {
+    const saved = window.profileRemake?.saveProfileInfo
+      ? await window.profileRemake.saveProfileInfo(profile)
+      : profile;
+    state.profile = { ...DEFAULT_PROFILE, ...(saved || profile) };
+    renderProfile(state.profile);
+    closeProfileDialog();
+  } catch (error) {
+    console.error("Profile save failed", error);
   }
 }
 

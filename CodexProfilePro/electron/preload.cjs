@@ -4,6 +4,8 @@ contextBridge.exposeInMainWorld("profileRemake", {
   readUsageData: () => ipcRenderer.invoke("profile:read-usage-data"),
   refreshUsageData: () => ipcRenderer.invoke("profile:refresh-usage-data"),
   getProfileInfo: () => ipcRenderer.invoke("profile:get-profile-info"),
+  saveProfileInfo: (profile) => ipcRenderer.invoke("profile:save-profile-info", profile),
+  selectProfileAvatar: () => ipcRenderer.invoke("profile:select-profile-avatar"),
   getAppInfo: () => ipcRenderer.invoke("profile:get-app-info"),
   onUsageDataUpdated: (callback) => {
     const listener = (_event, payload) => callback(payload);
