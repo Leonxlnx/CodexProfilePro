@@ -40,6 +40,7 @@ jobs:
       - run: npm test
       - run: ${{ matrix.build }}
       - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
         with:
           name: CodexProfilePro-${{ matrix.name }}
           path: |
