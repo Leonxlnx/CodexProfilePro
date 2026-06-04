@@ -186,7 +186,9 @@ function renderHeatmap() {
   allDays.forEach((date, index) => {
     const iso = isoDate(date);
     const isFuture = date > visibleEnd;
-    const value = isFuture ? 0 : valueByDate.get(iso) || 0;
+    const fillsWholeWeek = state.mode === "weekly" || state.mode === "cumulative";
+    const hideFutureCell = isFuture && !fillsWholeWeek;
+    const value = hideFutureCell ? 0 : valueByDate.get(iso) || 0;
     const cell = document.createElement("button");
     cell.className = "day-cell";
     cell.type = "button";
@@ -196,7 +198,7 @@ function renderHeatmap() {
     cell.style.setProperty("--i", String(index));
     cell.setAttribute("aria-label", tooltipText(iso, value));
 
-    if (isFuture) {
+    if (hideFutureCell) {
       cell.classList.add("is-future");
     }
 

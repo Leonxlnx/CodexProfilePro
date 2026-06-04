@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import vm from "node:vm";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const temp = await fs.mkdtemp(path.join(os.tmpdir(), "codex-profile-pro-smoke-"));
@@ -32,6 +33,8 @@ assert(day.total === 1980, `expected delta total 1980, got ${day.total}`);
 assert(day.breakdown?.[0]?.name === "gpt-5.5", "expected gpt-5.5 breakdown");
 assert(provider.insights.streaks.current >= 1, "expected active streak");
 
+await runHeatmapProjectionSmoke();
+
 console.log("smoke ok");
 
 function run(command, args, cwd, extraEnv = {}) {
@@ -54,4 +57,121 @@ function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
+}
+
+async function runHeatmapProjectionSmoke() {
+  const source = await fs.readFile(path.join(root, "CodexProfilePro", "app.js"), "utf8");
+  const cells = [];
+  const heatmap = createElementStub("heatmap");
+  const monthLabels = createElementStub("monthLabels");
+  const heatmapWrap = { clientWidth: 900 };
+  const elements = new Map([
+    ["lifetimeTokens", createElementStub("lifetimeTokens")],
+    ["peakTokens", createElementStub("peakTokens")],
+    ["longestTask", createElementStub("longestTask")],
+    ["currentStreak", createElementStub("currentStreak")],
+    ["longestStreak", createElementStub("longestStreak")],
+    ["heatmap", heatmap],
+    ["monthLabels", monthLabels],
+    ["costSummary", createElementStub("costSummary")],
+    ["totalCost", createElementStub("totalCost")],
+    ["monthCost", createElementStub("monthCost")],
+    ["peakCost", createElementStub("peakCost")],
+    ["peakCostLabel", createElementStub("peakCostLabel")],
+    ["averageCost", createElementStub("averageCost")],
+    ["refreshButton", createElementStub("refreshButton")],
+    ["tooltip", createElementStub("tooltip")],
+  ]);
+
+  heatmap.appendChild = (cell) => cells.push(cell);
+  Object.defineProperty(heatmap, "innerHTML", {
+    get: () => "",
+    set: () => {
+      cells.length = 0;
+    },
+  });
+
+  const context = {
+    console,
+    Intl,
+    setInterval: () => 0,
+    window: {
+      addEventListener: () => {},
+      profileRemake: null,
+      innerWidth: 1000,
+      innerHeight: 800,
+    },
+    document: {
+      addEventListener: () => {},
+      getElementById: (id) => elements.get(id) || createElementStub(id),
+      querySelector: (selector) => selector === ".heatmap-wrap" ? heatmapWrap : createElementStub(selector),
+      querySelectorAll: () => [],
+      createElement: () => createElementStub("created"),
+    },
+    fetch: async () => ({ ok: false }),
+    __cells: cells,
+  };
+
+  const testSource = source.replace(/\ninit\(\);\s*\n/, "\n") + `
+    function __visibleCellsForMode(mode) {
+      state.mode = mode;
+      graphStart = dateFromISO("2026-06-01");
+      graphEnd = dateFromISO("2026-06-04");
+      state.daily = [
+        { date: "2026-06-01", total: 100, dateObj: dateFromISO("2026-06-01") },
+        { date: "2026-06-02", total: 100, dateObj: dateFromISO("2026-06-02") },
+        { date: "2026-06-03", total: 100, dateObj: dateFromISO("2026-06-03") },
+        { date: "2026-06-04", total: 100, dateObj: dateFromISO("2026-06-04") },
+      ];
+      state.byDate = new Map(state.daily.map((item) => [item.date, item]));
+      renderHeatmap();
+      return globalThis.__cells.map((cell) => ({
+        date: cell.dataset.date,
+        value: Number(cell.dataset.value),
+        future: cell.classList.contains("is-future"),
+      }));
+    }
+    globalThis.__dailyCells = __visibleCellsForMode("daily");
+    globalThis.__weeklyCells = __visibleCellsForMode("weekly");
+    globalThis.__cumulativeCells = __visibleCellsForMode("cumulative");
+  `;
+
+  vm.runInNewContext(testSource, context, { filename: "app.js" });
+  const futureDates = ["2026-06-05", "2026-06-06", "2026-06-07"];
+  const byDate = (cellsByMode, iso) => cellsByMode.find((cell) => cell.date === iso);
+
+  for (const iso of futureDates) {
+    assert(byDate(context.__dailyCells, iso)?.future, `expected daily ${iso} to stay hidden`);
+    assert(!byDate(context.__weeklyCells, iso)?.future, `expected weekly ${iso} to render`);
+    assert((byDate(context.__weeklyCells, iso)?.value || 0) > 0, `expected weekly ${iso} to be filled`);
+    assert(!byDate(context.__cumulativeCells, iso)?.future, `expected cumulative ${iso} to render`);
+    assert((byDate(context.__cumulativeCells, iso)?.value || 0) > 0, `expected cumulative ${iso} to be filled`);
+  }
+}
+
+function createElementStub(id) {
+  const classes = new Set();
+  return {
+    id,
+    children: [],
+    dataset: {},
+    disabled: false,
+    hidden: false,
+    textContent: "",
+    title: "",
+    style: {
+      setProperty() {},
+    },
+    classList: {
+      add: (name) => classes.add(name),
+      toggle: (name, active) => active ? classes.add(name) : classes.delete(name),
+      contains: (name) => classes.has(name),
+    },
+    appendChild(child) {
+      this.children.push(child);
+    },
+    addEventListener() {},
+    setAttribute() {},
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 0, height: 0 }),
+  };
 }
