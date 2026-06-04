@@ -1,6 +1,8 @@
-const PROFILE = {
-  name: "leon",
-  handle: "@lexn8",
+const DEFAULT_PROFILE = {
+  name: "Codex User",
+  handle: "",
+  plan: "",
+  avatarUrl: "",
   longestTaskSeconds: 538143,
 };
 
@@ -25,9 +27,20 @@ const state = {
   byDate: new Map(),
   mode: "daily",
   isRefreshing: false,
+  refreshStartedAt: 0,
+  refreshElapsedTimer: null,
+  refreshResultTimer: null,
 };
 
 const els = {
+  brandMark: document.getElementById("brandMark"),
+  profileAvatar: document.getElementById("profileAvatar"),
+  avatarFallback: document.getElementById("avatarFallback"),
+  profileName: document.getElementById("profileName"),
+  handleRow: document.getElementById("handleRow"),
+  profileHandle: document.getElementById("profileHandle"),
+  profileDot: document.getElementById("profileDot"),
+  profilePlan: document.getElementById("profilePlan"),
   lifetimeTokens: document.getElementById("lifetimeTokens"),
   peakTokens: document.getElementById("peakTokens"),
   longestTask: document.getElementById("longestTask"),
@@ -43,13 +56,15 @@ const els = {
   peakCostLabel: document.getElementById("peakCostLabel"),
   averageCost: document.getElementById("averageCost"),
   refreshButton: document.getElementById("refreshButton"),
+  refreshLabel: document.getElementById("refreshLabel"),
   tooltip: document.getElementById("tooltip"),
 };
 
 init();
 
 async function init() {
-  await loadData();
+  renderProfile(DEFAULT_PROFILE);
+  await Promise.all([loadProfileInfo(), loadData()]);
   renderTabs();
   renderHeatmap();
   els.refreshButton?.addEventListener("click", refreshNow);
@@ -78,6 +93,7 @@ async function loadData() {
 
 async function refreshNow() {
   if (state.isRefreshing) return;
+  const startedAt = Date.now();
   setRefreshLoading(true);
   try {
     if (window.profileRemake?.refreshUsageData) {
@@ -92,18 +108,122 @@ async function refreshNow() {
     console.error("Refresh failed", error);
     await loadData();
   } finally {
-    setRefreshLoading(false);
+    setRefreshLoading(false, Date.now() - startedAt);
   }
 }
 
-function setRefreshLoading(isLoading) {
+function setRefreshLoading(isLoading, durationMs = 0) {
   state.isRefreshing = isLoading;
   if (!els.refreshButton) return;
   els.refreshButton.classList.toggle("is-loading", isLoading);
   els.refreshButton.disabled = isLoading;
   els.refreshButton.setAttribute("aria-busy", String(isLoading));
-  els.refreshButton.setAttribute("aria-label", isLoading ? "Refreshing data" : "Refresh data");
-  els.refreshButton.title = isLoading ? "Refreshing data" : "Refresh data";
+
+  if (state.refreshElapsedTimer) {
+    clearInterval(state.refreshElapsedTimer);
+    state.refreshElapsedTimer = null;
+  }
+  if (state.refreshResultTimer) {
+    clearTimeout(state.refreshResultTimer);
+    state.refreshResultTimer = null;
+  }
+
+  if (isLoading) {
+    state.refreshStartedAt = Date.now();
+    updateRefreshLabel();
+    state.refreshElapsedTimer = setInterval(updateRefreshLabel, 1000);
+    return;
+  }
+
+  state.refreshStartedAt = 0;
+  const label = durationMs > 0 ? `Updated in ${formatElapsed(durationMs)}` : "";
+  setRefreshLabel(label);
+  state.refreshResultTimer = setTimeout(() => setRefreshLabel(""), 4200);
+}
+
+function updateRefreshLabel() {
+  const elapsed = state.refreshStartedAt ? Date.now() - state.refreshStartedAt : 0;
+  setRefreshLabel(`Refreshing ${formatElapsed(elapsed)}`);
+}
+
+function setRefreshLabel(label) {
+  if (!els.refreshButton || !els.refreshLabel) return;
+  const hasLabel = Boolean(label);
+  els.refreshLabel.textContent = label;
+  els.refreshButton.classList.toggle("has-refresh-label", hasLabel);
+  const aria = label || "Refresh data";
+  els.refreshButton.setAttribute("aria-label", aria);
+  els.refreshButton.title = aria;
+}
+
+async function loadProfileInfo() {
+  try {
+    let profile = null;
+    if (window.profileRemake?.getProfileInfo) {
+      profile = await window.profileRemake.getProfileInfo();
+    }
+    renderProfile({ ...DEFAULT_PROFILE, ...(profile || {}) });
+  } catch (error) {
+    console.error("Profile info failed", error);
+    renderProfile(DEFAULT_PROFILE);
+  }
+}
+
+function renderProfile(profile) {
+  const name = cleanDisplayText(profile.name) || DEFAULT_PROFILE.name;
+  const handle = cleanDisplayText(profile.handle);
+  const plan = cleanDisplayText(profile.plan);
+  const avatarUrl = cleanDisplayText(profile.avatarUrl, 2048);
+
+  els.profileName.textContent = name;
+  setOptionalText(els.profileHandle, handle);
+  setOptionalText(els.profilePlan, plan);
+  if (els.handleRow) {
+    els.handleRow.hidden = !(handle || plan);
+  }
+  if (els.profileDot) {
+    els.profileDot.hidden = !(handle && plan);
+  }
+
+  if (els.avatarFallback) {
+    els.avatarFallback.textContent = initialForName(name);
+  }
+
+  if (avatarUrl && els.profileAvatar) {
+    els.profileAvatar.src = avatarUrl;
+    els.profileAvatar.hidden = false;
+    els.profileAvatar.onerror = () => {
+      els.profileAvatar.hidden = true;
+      els.profileAvatar.removeAttribute("src");
+      els.brandMark?.classList.add("is-empty");
+    };
+    els.brandMark?.classList.remove("is-empty");
+  } else {
+    els.profileAvatar?.removeAttribute("src");
+    if (els.profileAvatar) {
+      els.profileAvatar.hidden = true;
+    }
+    els.brandMark?.classList.add("is-empty");
+  }
+}
+
+function setOptionalText(element, value) {
+  if (!element) return;
+  element.textContent = value || "";
+  element.hidden = !value;
+}
+
+function cleanDisplayText(value, maxLength = 80) {
+  return String(value || "")
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
+}
+
+function initialForName(name) {
+  const first = cleanDisplayText(name).match(/[A-Za-z0-9]/)?.[0];
+  return (first || "C").toUpperCase();
 }
 
 async function getUsageData() {
@@ -149,7 +269,7 @@ function renderStats() {
 
   els.lifetimeTokens.textContent = formatCompact(total);
   els.peakTokens.textContent = formatCompact(peak.total);
-  els.longestTask.textContent = formatDuration(PROFILE.longestTaskSeconds);
+  els.longestTask.textContent = formatDuration(DEFAULT_PROFILE.longestTaskSeconds);
   els.currentStreak.textContent = `${streaks.current} days`;
   els.longestStreak.textContent = `${streaks.longest} days`;
 }
@@ -504,6 +624,14 @@ function formatDuration(seconds) {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   return `${hours}h ${minutes}m`;
+}
+
+function formatElapsed(ms) {
+  const totalSeconds = Math.max(0, Math.round(ms / 1000));
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
 }
 
 function formatDateLabel(date) {

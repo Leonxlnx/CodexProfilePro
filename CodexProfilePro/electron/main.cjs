@@ -1,8 +1,10 @@
 const { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, shell } = require("electron");
-const { spawn } = require("node:child_process");
+const { spawn, spawnSync } = require("node:child_process");
 const fs = require("node:fs/promises");
 const fsSync = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 
 const REFRESH_INTERVAL_MS = 60 * 60 * 1000;
 const REFRESH_TIMEOUT_MS = 20 * 60 * 1000;
@@ -38,6 +40,10 @@ function userDataPath(...segments) {
 
 function usageJsonPath() {
   return userDataPath("slopmeter.json");
+}
+
+function codexHomePath() {
+  return process.env.CODEX_HOME?.trim() || path.join(app.getPath("home"), ".codex");
 }
 
 function fallbackUsageJsonPath() {
@@ -127,6 +133,147 @@ async function copySeedUsageJson(target) {
 async function readUsageData() {
   const target = await ensureUsageJson();
   return JSON.parse(await fs.readFile(target, "utf8"));
+}
+
+async function readProfileInfo() {
+  const envProfile = {
+    name: cleanProfileText(process.env.CODEX_PROFILE_NAME),
+    handle: normalizeHandle(process.env.CODEX_PROFILE_HANDLE),
+    plan: cleanProfileText(process.env.CODEX_PROFILE_PLAN, 32),
+    avatarUrl: await resolveAvatarUrl(process.env.CODEX_PROFILE_AVATAR || process.env.CODEX_PROFILE_IMAGE),
+  };
+  const stateProfile = await readCodexStateProfile();
+  const fallbackName = cleanProfileText(gitConfigValue("user.name")) || cleanProfileText(os.userInfo().username) || "Codex User";
+  const avatarUrl = envProfile.avatarUrl || stateProfile.avatarUrl || "";
+
+  return {
+    name: envProfile.name || stateProfile.name || fallbackName,
+    handle: envProfile.handle || stateProfile.handle || "",
+    plan: envProfile.plan || stateProfile.plan || "",
+    avatarUrl,
+    hasAvatar: Boolean(avatarUrl),
+  };
+}
+
+async function readCodexStateProfile() {
+  const statePath = path.join(codexHomePath(), ".codex-global-state.json");
+  if (!fsSync.existsSync(statePath)) {
+    return {};
+  }
+
+  try {
+    const payload = JSON.parse(await fs.readFile(statePath, "utf8"));
+    return await profileFromObject(payload);
+  } catch {
+    return {};
+  }
+}
+
+async function profileFromObject(root) {
+  const candidates = [];
+  const visited = new Set();
+
+  function walk(value, pathParts = []) {
+    if (!value || typeof value !== "object" || visited.has(value) || pathParts.length > 7) {
+      return;
+    }
+    visited.add(value);
+
+    const profile = extractProfileFields(value);
+    const pathText = pathParts.join(".").toLowerCase();
+    const hasProfilePath = /(profile|account|user|viewer|me|identity)/.test(pathText);
+    const score = Number(Boolean(profile.name)) + Number(Boolean(profile.handle)) + Number(Boolean(profile.avatarCandidate)) + Number(Boolean(profile.plan));
+    if (score >= 1 && hasProfilePath) {
+      candidates.push({ ...profile, score });
+    }
+
+    for (const [key, child] of Object.entries(value)) {
+      if (key.toLowerCase().includes("token") || key.toLowerCase().includes("secret")) {
+        continue;
+      }
+      walk(child, [...pathParts, key]);
+    }
+  }
+
+  walk(root);
+  candidates.sort((a, b) => b.score - a.score);
+  const best = candidates[0] || {};
+  return {
+    name: cleanProfileText(best.name),
+    handle: normalizeHandle(best.handle),
+    plan: cleanProfileText(best.plan, 32),
+    avatarUrl: await resolveAvatarUrl(best.avatarCandidate),
+  };
+}
+
+function extractProfileFields(value) {
+  return {
+    name: firstString(value, ["displayName", "display_name", "fullName", "full_name", "name"]),
+    handle: firstString(value, ["handle", "username", "userName", "user_name", "login"]),
+    plan: firstString(value, ["plan", "subscription", "tier"]),
+    avatarCandidate: firstString(value, ["avatarUrl", "avatar_url", "avatar", "imageUrl", "image_url", "picture", "photoUrl", "photo_url"]),
+  };
+}
+
+function firstString(value, keys) {
+  for (const key of keys) {
+    if (typeof value?.[key] === "string" && value[key].trim()) {
+      return value[key];
+    }
+  }
+  return "";
+}
+
+function cleanProfileText(value, maxLength = 80) {
+  return String(value || "")
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
+}
+
+function normalizeHandle(value) {
+  const handle = cleanProfileText(value, 64).replace(/^@+/, "");
+  if (!handle) return "";
+  return `@${handle}`;
+}
+
+async function resolveAvatarUrl(value) {
+  const candidate = cleanProfileText(value, 2048);
+  if (!candidate) return "";
+  if (/^https?:\/\//i.test(candidate) || /^data:image\//i.test(candidate)) {
+    return candidate;
+  }
+  if (/^file:\/\//i.test(candidate)) {
+    return candidate;
+  }
+
+  const absolutePath = path.isAbsolute(candidate)
+    ? candidate
+    : path.resolve(codexHomePath(), candidate);
+  if (!/\.(avif|gif|jpe?g|png|webp)$/i.test(absolutePath)) {
+    return "";
+  }
+
+  try {
+    const stat = await fs.stat(absolutePath);
+    if (!stat.isFile()) return "";
+    return pathToFileURL(absolutePath).href;
+  } catch {
+    return "";
+  }
+}
+
+function gitConfigValue(key) {
+  try {
+    const result = spawnSync("git", ["config", "--global", key], {
+      encoding: "utf8",
+      windowsHide: true,
+    });
+    return result.status === 0 ? result.stdout.trim() : "";
+  } catch {
+    return "";
+  }
 }
 
 async function isUsageJsonFresh(maxAgeMs = REFRESH_INTERVAL_MS) {
@@ -275,6 +422,7 @@ app.on("second-instance", () => createWindow());
 app.whenReady().then(async () => {
   ipcMain.handle("profile:read-usage-data", readUsageData);
   ipcMain.handle("profile:refresh-usage-data", () => refreshUsageData({ broadcast: false }));
+  ipcMain.handle("profile:get-profile-info", readProfileInfo);
   ipcMain.handle("profile:get-app-info", () => ({ version: app.getVersion(), dataPath: usageJsonPath() }));
 
   await ensureUsageJson();

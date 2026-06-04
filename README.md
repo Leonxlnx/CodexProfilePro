@@ -10,6 +10,7 @@ It renders the profile UI, daily/weekly/cumulative/cost heatmaps, estimated API-
 - Windows tray integration with manual refresh and hourly background refresh
 - Daily, weekly, cumulative, and API-equivalent cost heatmaps
 - Local-only Codex log parsing from `~/.codex/sessions/**/*.jsonl`
+- Dynamic profile label with safe fallbacks and no bundled personal profile photo
 - Private usage data kept out of Git by default
 
 ## Run locally
@@ -38,6 +39,10 @@ CodexProfilePro/slopmeter.json
 ```
 
 Packaged desktop builds write refreshed data to the app user-data folder.
+
+## Profile Display
+
+CodexProfilePro avoids bundling a personal profile photo. It uses safe profile fields from local Codex state when available, supports `CODEX_PROFILE_NAME`, `CODEX_PROFILE_HANDLE`, `CODEX_PROFILE_PLAN`, and `CODEX_PROFILE_AVATAR` overrides, then falls back to the OS/Git user name with a neutral avatar.
 
 ## Build
 
