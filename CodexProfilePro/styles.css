@@ -13,8 +13,7 @@
   --cell-4: #AF5656;
   --cell: 16px;
   --gap: 3px;
-  --app-zoom: 1.15;
-  --content-width: 976px;
+  --content-width: 900px;
 }
 
 * {
@@ -33,11 +32,22 @@ body {
   color: var(--text);
   font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   letter-spacing: 0;
-  zoom: var(--app-zoom);
 }
 
 button {
   font: inherit;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .topbar {
@@ -89,12 +99,12 @@ button {
 }
 
 .profile-shell {
-  width: min(100%, 1080px);
-  min-height: calc(100vh / var(--app-zoom));
+  width: 100%;
+  min-height: 100vh;
   display: grid;
-  align-content: center;
+  align-content: start;
   margin: 0 auto;
-  padding: 72px 40px 34px;
+  padding: 112px 32px 32px;
 }
 
 .identity {
@@ -103,8 +113,8 @@ button {
 }
 
 .brand-mark {
-  width: 76px;
-  height: 76px;
+  width: 64px;
+  height: 64px;
   display: grid;
   place-items: center;
   margin-bottom: 24px;
@@ -123,7 +133,7 @@ button {
 .identity h1 {
   margin: 0;
   color: #e6e6ff;
-  font-size: 30px;
+  font-size: 27px;
   font-weight: 400;
   line-height: 1.1;
 }
@@ -132,7 +142,7 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 14px;
+  margin-top: 12px;
   color: #8d8d9b;
   font-size: 15px;
 }
@@ -154,8 +164,8 @@ button {
 
 .metric-panel {
   width: min(100%, var(--content-width));
-  height: 76px;
-  margin: 46px auto 0;
+  height: 70px;
+  margin: 32px auto 0;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: center;
@@ -166,7 +176,7 @@ button {
 
 .metric {
   min-width: 0;
-  height: 46px;
+  height: 42px;
   display: grid;
   align-content: center;
   justify-items: center;
@@ -181,7 +191,7 @@ button {
 
 .metric strong {
   color: #efefff;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 500;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -189,14 +199,14 @@ button {
 
 .metric span {
   color: #abaabb;
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1;
   white-space: nowrap;
 }
 
 .activity-card {
   width: min(100%, var(--content-width));
-  margin: 40px auto 0;
+  margin: 30px auto 0;
 }
 
 .activity-header {
@@ -209,7 +219,7 @@ button {
 
 .activity-header h2 {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: #deddf4;
 }
@@ -225,7 +235,7 @@ button {
   padding: 0;
   background: transparent;
   color: #868695;
-  font-size: 16px;
+  font-size: 15px;
   cursor: pointer;
   transition: color 180ms ease;
 }
@@ -384,6 +394,70 @@ button {
   white-space: nowrap;
 }
 
+.refresh-button {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  z-index: 15;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #2a2a31;
+  border-radius: 10px;
+  background: rgba(17, 17, 18, 0.92);
+  color: #dedeef;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.refresh-button:hover {
+  border-color: #3c3c45;
+  background: #171719;
+  color: #f0f0ff;
+}
+
+.refresh-button:active {
+  transform: translateY(1px);
+}
+
+.refresh-button:focus {
+  outline: none;
+}
+
+.refresh-button:focus-visible {
+  outline: 1px solid #3c3c45;
+  outline-offset: 4px;
+}
+
+.refresh-button:disabled {
+  cursor: default;
+  opacity: 0.82;
+}
+
+.refresh-button svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform-origin: 50% 50%;
+}
+
+.refresh-button.is-loading svg {
+  animation: refresh-spin 900ms linear infinite;
+}
+
+@keyframes refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .tooltip {
   position: fixed;
   z-index: 20;
@@ -404,7 +478,6 @@ button {
 
 @media (max-width: 880px) {
   :root {
-    --app-zoom: .98;
     --content-width: 100%;
     --cell: 11px;
     --gap: 3px;
@@ -465,10 +538,6 @@ button {
 }
 
 @media (max-width: 560px) {
-  :root {
-    --app-zoom: .86;
-  }
-
   .topbar {
     padding: 0 12px;
   }
@@ -517,6 +586,11 @@ button {
     padding-bottom: 30px;
   }
 
+  .refresh-button {
+    left: 12px;
+    bottom: 12px;
+  }
+
   .cost-summary {
     grid-template-columns: 1fr;
   }
@@ -532,10 +606,6 @@ button {
 }
 
 @media (max-height: 760px) {
-  :root {
-    --app-zoom: 1;
-  }
-
   .profile-shell {
     align-content: start;
     padding-top: 64px;
@@ -565,10 +635,6 @@ button {
 }
 
 @media (max-height: 620px) {
-  :root {
-    --app-zoom: .86;
-  }
-
   .profile-shell {
     padding-top: 62px;
     padding-bottom: 24px;
@@ -616,10 +682,6 @@ button {
 }
 
 @media (max-height: 500px) {
-  :root {
-    --app-zoom: .76;
-  }
-
   .topbar {
     height: 42px;
   }
@@ -634,5 +696,16 @@ button {
 
   .activity-card {
     margin-top: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .refresh-button,
+  .refresh-button svg {
+    transition: none;
+  }
+
+  .refresh-button.is-loading svg {
+    animation-duration: 1400ms;
   }
 }

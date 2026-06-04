@@ -208,8 +208,8 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1040,
     height: 760,
-    minWidth: 560,
-    minHeight: 430,
+    minWidth: 980,
+    minHeight: 720,
     backgroundColor: "#111111",
     title: APP_NAME,
     icon: iconPath(),
@@ -219,6 +219,17 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false
+    }
+  });
+
+  mainWindow.webContents.on("did-finish-load", () => {
+    mainWindow.webContents.setZoomFactor(1);
+  });
+  mainWindow.webContents.on("before-input-event", (event, input) => {
+    const isZoomShortcut = (input.control || input.meta) && ["+", "=", "-", "_", "0"].includes(input.key);
+    if (isZoomShortcut) {
+      event.preventDefault();
+      mainWindow.webContents.setZoomFactor(1);
     }
   });
 

@@ -24,6 +24,7 @@ const state = {
   daily: [],
   byDate: new Map(),
   mode: "daily",
+  isRefreshing: false,
 };
 
 const els = {
@@ -41,6 +42,7 @@ const els = {
   peakCost: document.getElementById("peakCost"),
   peakCostLabel: document.getElementById("peakCostLabel"),
   averageCost: document.getElementById("averageCost"),
+  refreshButton: document.getElementById("refreshButton"),
   tooltip: document.getElementById("tooltip"),
 };
 
@@ -50,6 +52,7 @@ async function init() {
   await loadData();
   renderTabs();
   renderHeatmap();
+  els.refreshButton?.addEventListener("click", refreshNow);
   startAutoRefresh();
   window.profileRemake?.onUsageDataUpdated?.((data) => {
     applyData(data);
@@ -71,6 +74,36 @@ async function loadData() {
   const data = await getUsageData();
   if (!data) return;
   applyData(data);
+}
+
+async function refreshNow() {
+  if (state.isRefreshing) return;
+  setRefreshLoading(true);
+  try {
+    if (window.profileRemake?.refreshUsageData) {
+      const data = await window.profileRemake.refreshUsageData();
+      if (data) {
+        applyData(data);
+        return;
+      }
+    }
+    await loadData();
+  } catch (error) {
+    console.error("Refresh failed", error);
+    await loadData();
+  } finally {
+    setRefreshLoading(false);
+  }
+}
+
+function setRefreshLoading(isLoading) {
+  state.isRefreshing = isLoading;
+  if (!els.refreshButton) return;
+  els.refreshButton.classList.toggle("is-loading", isLoading);
+  els.refreshButton.disabled = isLoading;
+  els.refreshButton.setAttribute("aria-busy", String(isLoading));
+  els.refreshButton.setAttribute("aria-label", isLoading ? "Refreshing data" : "Refresh data");
+  els.refreshButton.title = isLoading ? "Refreshing data" : "Refresh data";
 }
 
 async function getUsageData() {
@@ -191,14 +224,10 @@ function getVisibleEndDate() {
 
 function fitHeatmap(columns) {
   const availableWidth = els.heatmapWrap?.clientWidth || 914;
-  const appZoom = getAppZoom();
-  const renderedGap = availableWidth < 720 ? 4 : 5;
-  const availableRenderedWidth = availableWidth * appZoom;
-  const renderedCell = availableWidth < 720
-    ? Math.max(8, Math.floor((availableRenderedWidth - ((columns - 1) * renderedGap)) / columns))
-    : 18;
-  const gap = renderedGap / appZoom;
-  const cell = renderedCell / appZoom;
+  const gap = availableWidth < 720 ? 3 : 4;
+  const maxCell = availableWidth < 720 ? 12 : 14;
+  const fittedCell = Math.floor((availableWidth - ((columns - 1) * gap)) / columns);
+  const cell = Math.max(7, Math.min(maxCell, fittedCell));
   const usedWidth = (cell * columns) + (gap * (columns - 1));
   const offset = Math.max(0, Math.floor((availableWidth - usedWidth) / 2));
   els.heatmap.style.setProperty("--gap", `${gap}px`);
@@ -216,8 +245,7 @@ function fitHeatmap(columns) {
 }
 
 function getAppZoom() {
-  const zoom = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--app-zoom"));
-  return Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+  return 1;
 }
 
 function renderCostSummary() {
