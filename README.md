@@ -6,11 +6,11 @@ CodexProfilePro is a local, cross-platform desktop dashboard for Codex usage. It
 
 Get the latest build from the release page:
 
-[CodexProfilePro v1.0.5](https://github.com/Leonxlnx/CodexProfilePro/releases/tag/v1.0.5)
+[CodexProfilePro v1.0.6](https://github.com/Leonxlnx/CodexProfilePro/releases/tag/v1.0.6)
 
-- Windows: use `CodexProfilePro.Setup.1.0.5.exe` for the installer, or `CodexProfilePro.1.0.5.exe` for portable use.
-- macOS: use `CodexProfilePro-1.0.5-universal.dmg`, or the universal ZIP.
-- Linux: use `CodexProfilePro-1.0.5.AppImage`, or `codex-profile-pro_1.0.5_amd64.deb`.
+- Windows: use `CodexProfilePro.Setup.1.0.6.exe` for the installer, or `CodexProfilePro.1.0.6.exe` for portable use.
+- macOS: use `CodexProfilePro-1.0.6-universal.dmg`, or the universal ZIP.
+- Linux: use `CodexProfilePro-1.0.6.AppImage`, or `codex-profile-pro_1.0.6_amd64.deb`.
 
 ## Use Guide
 
@@ -28,6 +28,7 @@ If no Codex logs exist on the machine, the app opens but the dashboard can be em
 - Daily, weekly, cumulative, and API-equivalent cost heatmaps
 - Local-only Codex log parsing from `~/.codex/sessions/**/*.jsonl`
 - Hourly refresh while the desktop app is running
+- Incremental refresh for large Codex log folders
 - Windows tray support with manual refresh
 - Editable local profile settings
 - Private usage data kept out of Git by default

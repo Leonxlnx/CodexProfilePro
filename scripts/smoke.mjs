@@ -33,6 +33,7 @@ assert(day.total === 1980, `expected delta total 1980, got ${day.total}`);
 assert(day.breakdown?.[0]?.name === "gpt-5.5", "expected gpt-5.5 breakdown");
 assert(provider.insights.streaks.current >= 1, "expected active streak");
 
+await runIncrementalExporterSmoke();
 await runHeatmapProjectionSmoke();
 
 console.log("smoke ok");
@@ -147,6 +148,54 @@ async function runHeatmapProjectionSmoke() {
     assert(!byDate(context.__cumulativeCells, iso)?.future, `expected cumulative ${iso} to render`);
     assert((byDate(context.__cumulativeCells, iso)?.value || 0) > 0, `expected cumulative ${iso} to be filled`);
   }
+}
+
+async function runIncrementalExporterSmoke() {
+  const incrementalHome = path.join(temp, ".codex-incremental");
+  const incrementalSessionDir = path.join(incrementalHome, "sessions", "2026", "06", "02");
+  const incrementalOutput = path.join(temp, "incremental-usage.json");
+  await fs.mkdir(incrementalSessionDir, { recursive: true });
+  await fs.writeFile(incrementalOutput, JSON.stringify({
+    version: "fast-codex-usage-export-1",
+    start: "2025-06-02",
+    end: "2026-06-02",
+    providers: [{
+      provider: "codex",
+      insights: {
+        streaks: { current: 1, longest: 1 },
+        mostUsedModel: { name: "gpt-5.5", tokens: { input: 80, output: 20, reasoning: 0, cache: { input: 10, output: 0 }, total: 100 } },
+        totalTokens: { input: 80, output: 20, reasoning: 0, cache: { input: 10, output: 0 }, total: 100 },
+      },
+      daily: [{
+        date: "2026-06-01",
+        input: 80,
+        output: 20,
+        reasoning: 0,
+        cache: { input: 10, output: 0 },
+        total: 100,
+        displayValue: 100,
+        breakdown: [{ name: "gpt-5.5", tokens: { input: 80, output: 20, reasoning: 0, cache: { input: 10, output: 0 }, total: 100 } }],
+      }],
+    }],
+  }, null, 2), "utf8");
+  await fs.utimes(incrementalOutput, new Date("2026-06-02T10:00:00.000Z"), new Date("2026-06-02T10:00:00.000Z"));
+  await fs.writeFile(path.join(incrementalSessionDir, "rollout-incremental.jsonl"), [
+    JSON.stringify({ timestamp: "2026-06-02T11:00:00.000Z", type: "response_item", payload: { type: "turn_context", model: "gpt-5.5" } }),
+    JSON.stringify({ timestamp: "2026-06-02T11:01:00.000Z", type: "event_msg", payload: { type: "token_count", info: { total_token_usage: { input_tokens: 600, cached_input_tokens: 100, output_tokens: 50, reasoning_output_tokens: 10, total_tokens: 650 }, last_token_usage: { input_tokens: 600, cached_input_tokens: 100, output_tokens: 50, reasoning_output_tokens: 10, total_tokens: 650 } } } }),
+  ].join("\n") + "\n", "utf8");
+
+  await run("node", ["CodexProfilePro/fast-codex-usage-export.mjs", incrementalOutput], root, {
+    CODEX_HOME: incrementalHome,
+    PROFILE_EXPORT_END_DATE: "2026-06-02",
+  });
+
+  const payload = JSON.parse(await fs.readFile(incrementalOutput, "utf8"));
+  const days = payload.providers?.[0]?.daily || [];
+  const previous = days.find((item) => item.date === "2026-06-01");
+  const current = days.find((item) => item.date === "2026-06-02");
+  assert(previous?.total === 100, `expected previous day to be preserved, got ${previous?.total}`);
+  assert(current?.total === 650, `expected current day to be rebuilt incrementally, got ${current?.total}`);
+  assert(payload.providers?.[0]?.insights?.streaks?.current === 2, "expected incremental streak to include current day");
 }
 
 function createElementStub(id) {

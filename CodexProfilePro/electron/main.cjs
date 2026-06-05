@@ -507,7 +507,8 @@ app.whenReady().then(async () => {
   if (!startHidden) {
     createWindow();
   }
-  if (!(await isUsageJsonFresh())) {
+  const usageData = await readUsageData();
+  if (isUsageDataEmpty(usageData) || !(await isUsageJsonFresh())) {
     refreshUsageData({ broadcast: true }).catch((error) => console.error(`[${APP_NAME}] initial refresh failed`, error));
   }
   startBackgroundRefresh();

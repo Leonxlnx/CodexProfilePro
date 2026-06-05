@@ -5,6 +5,7 @@ import path from "node:path";
 import readline from "node:readline";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const LARGE_NON_USAGE_LINE_BYTES = 256 * 1024;
 const outputPath = process.argv[2] || path.join(process.cwd(), "slopmeter.json");
 const codexHome = process.env.CODEX_HOME?.trim() || path.join(os.homedir(), ".codex");
 const sessionsRoot = path.join(codexHome, "sessions");
@@ -19,6 +20,10 @@ function isoDate(date) {
 function dateFromISO(iso) {
   const [year, month, day] = iso.split("-").map(Number);
   return new Date(year, month - 1, day);
+}
+
+function startOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
 function exportEndDate() {
@@ -171,6 +176,63 @@ function createDailyTotals() {
   };
 }
 
+function cloneTotals(value) {
+  return {
+    input: value?.input ?? 0,
+    output: value?.output ?? 0,
+    reasoning: value?.reasoning ?? 0,
+    cache: {
+      input: value?.cache?.input ?? 0,
+      output: value?.cache?.output ?? 0,
+    },
+    total: value?.total ?? 0,
+  };
+}
+
+function dailyTotalsFromExisting(payload, resetStartDate) {
+  const dailyTotals = new Map();
+  const days = payload?.providers?.[0]?.daily;
+  if (!Array.isArray(days)) {
+    return dailyTotals;
+  }
+
+  for (const day of days) {
+    if (!day.date) {
+      continue;
+    }
+    const dayDate = dateFromISO(day.date);
+    if (Number.isNaN(dayDate.getTime()) || dayDate >= resetStartDate) {
+      continue;
+    }
+
+    const totals = {
+      input: day.input ?? 0,
+      output: day.output ?? 0,
+      reasoning: day.reasoning ?? 0,
+      cache: {
+        input: day.cache?.input ?? 0,
+        output: day.cache?.output ?? 0,
+      },
+      total: day.total ?? 0,
+      models: new Map(),
+    };
+
+    if (Array.isArray(day.breakdown)) {
+      for (const item of day.breakdown) {
+        totals.models.set(normalizeModelName(item.name), cloneTotals(item.tokens));
+      }
+    }
+
+    if (!totals.models.size && totals.total > 0) {
+      totals.models.set("gpt-5.5", cloneTotals(totals));
+    }
+
+    dailyTotals.set(day.date, totals);
+  }
+
+  return dailyTotals;
+}
+
 async function listJsonlFiles(root) {
   const files = [];
   async function walk(dir) {
@@ -186,7 +248,11 @@ async function listJsonlFiles(root) {
       if (entry.isDirectory()) {
         await walk(fullPath);
       } else if (entry.isFile() && entry.name.endsWith(".jsonl")) {
-        files.push(fullPath);
+        try {
+          files.push({ path: fullPath, stat: await fsp.stat(fullPath) });
+        } catch {
+          continue;
+        }
       }
     }
   }
@@ -195,19 +261,26 @@ async function listJsonlFiles(root) {
   return files;
 }
 
-async function processFile(filePath, startDate, endDate, dailyTotals) {
-  const stat = await fsp.stat(filePath);
+async function processFile(file, startDate, endDate, dailyTotals) {
+  const filePath = typeof file === "string" ? file : file.path;
+  const stat = typeof file === "string" ? await fsp.stat(filePath) : file.stat;
   if (stat.size === 0 || stat.mtime < startDate) {
     return;
   }
 
   let previousTotals = null;
   let currentModel = null;
-  const stream = fs.createReadStream(filePath, { encoding: "utf8" });
+  const stream = fs.createReadStream(filePath, { encoding: "utf8", highWaterMark: 1024 * 1024 });
   const lines = readline.createInterface({ input: stream, crlfDelay: Infinity });
 
   for await (const line of lines) {
-    if (!line.includes('"token_count"') && !line.includes('"model"') && !line.includes('"model_name"')) {
+    const isTokenCountLine = line.includes('"token_count"');
+    const mightCarryModel = (
+      !isTokenCountLine &&
+      line.length < LARGE_NON_USAGE_LINE_BYTES &&
+      (line.includes('"model"') || line.includes('"model_name"'))
+    );
+    if (!isTokenCountLine && !mightCarryModel) {
       continue;
     }
 
@@ -290,10 +363,27 @@ async function main() {
   const startIso = isoDate(startDate);
   const endIso = isoDate(endDate);
 
+  const existingPayload = await readExistingPayload(outputPath);
+  const existingStat = await readExistingStat(outputPath);
+  const canIncremental = (
+    process.env.PROFILE_EXPORT_FULL !== "1" &&
+    existingPayload?.providers?.[0]?.daily?.length &&
+    existingStat
+  );
+  const resetStartDate = canIncremental
+    ? startOfDay(new Date(existingStat.mtimeMs))
+    : startDate;
+  const processStartDate = resetStartDate < startDate ? startDate : resetStartDate;
+
   const files = await listJsonlFiles(sessionsRoot);
-  const dailyTotals = new Map();
-  for (const file of files) {
-    await processFile(file, startDate, endDate, dailyTotals);
+  const filesToProcess = canIncremental
+    ? files.filter((file) => file.stat.mtime >= processStartDate)
+    : files;
+  const dailyTotals = canIncremental
+    ? dailyTotalsFromExisting(existingPayload, processStartDate)
+    : new Map();
+  for (const file of filesToProcess) {
+    await processFile(file, processStartDate, endDate, dailyTotals);
   }
 
   const daily = [...dailyTotals.entries()]
@@ -345,6 +435,25 @@ async function main() {
   await fsp.writeFile(outputPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
   console.log(`Wrote ${outputPath}`);
   console.log(`Days: ${daily.length}; total: ${aggregate.total}; end: ${endIso}`);
+  if (canIncremental) {
+    console.log(`Incremental refresh from ${isoDate(processStartDate)}; files: ${filesToProcess.length}/${files.length}`);
+  }
+}
+
+async function readExistingPayload(filePath) {
+  try {
+    return JSON.parse(await fsp.readFile(filePath, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+async function readExistingStat(filePath) {
+  try {
+    return await fsp.stat(filePath);
+  } catch {
+    return null;
+  }
 }
 
 main().catch((error) => {
