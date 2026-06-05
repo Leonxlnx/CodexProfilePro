@@ -30,7 +30,7 @@ const SHARE_CARD = {
   cell: 28,
   gap: 8,
   padding: 64,
-  radius: 34,
+  radius: 52,
 };
 
 const SHARE_COLORS = {
@@ -460,19 +460,19 @@ async function drawShareHeader(ctx) {
   drawAvatar(ctx, avatar, name, 64, 66, 104);
 
   ctx.fillStyle = SHARE_COLORS.text;
-  drawFittedText(ctx, name, 192, 100, 34, 500, SHARE_COLORS.text, 420, "left");
+  drawFittedText(ctx, name, 192, 108, 32, 500, SHARE_COLORS.text, 420, "left");
   ctx.fillStyle = SHARE_COLORS.muted;
-  drawFittedText(ctx, handle, 192, 146, 24, 500, SHARE_COLORS.muted, 360, "left");
+  drawFittedText(ctx, handle, 192, 150, 24, 500, SHARE_COLORS.muted, 360, "left");
 
   ctx.save();
   ctx.globalAlpha = 0.86;
   if (codexIcon) {
-    ctx.drawImage(codexIcon, 740, 91, 44, 44);
+    ctx.drawImage(codexIcon, 742, 92, 42, 42);
   }
   if (codexWordmark) {
-    ctx.drawImage(codexWordmark, 810, 100, 128, 34);
+    ctx.drawImage(codexWordmark, 820, 101, 118, 31);
   } else {
-    drawFittedText(ctx, "Codex", 810, 127, 32, 700, "#AAA8C0", 128, "left");
+    drawFittedText(ctx, "Codex", 820, 126, 30, 700, "#AAA8C0", 118, "left");
   }
   ctx.restore();
 }
@@ -516,8 +516,8 @@ function drawShareMetrics(ctx) {
 
   items.forEach(([value, label], index) => {
     const center = left + (column * index) + (column / 2);
-    drawFittedText(ctx, value, center, top + 28, 34, 700, SHARE_COLORS.text, column - 24, "center");
-    drawFittedText(ctx, label, center, top + 74, 24, 500, SHARE_COLORS.muted, column - 24, "center");
+    drawFittedText(ctx, value, center, top + 26, 32, 700, SHARE_COLORS.text, column - 24, "center");
+    drawFittedText(ctx, label, center, top + 74, 25, 500, SHARE_COLORS.muted, column - 24, "center");
   });
 }
 

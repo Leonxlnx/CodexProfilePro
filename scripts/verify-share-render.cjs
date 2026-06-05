@@ -6,17 +6,19 @@ const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 
 const root = path.resolve(__dirname, "..");
+const realUserDataPath = path.join(process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming"), "codex-profile-pro");
 app.setName("codex-profile-pro");
+app.setPath("userData", path.join(os.tmpdir(), `codex-profile-pro-verify-${process.pid}`));
 
 async function readUsageData() {
-  const appDataPath = path.join(app.getPath("userData"), "slopmeter.json");
+  const appDataPath = path.join(realUserDataPath, "slopmeter.json");
   const sourcePath = path.join(root, "CodexProfilePro", "slopmeter.json");
   const usagePath = fsSync.existsSync(appDataPath) ? appDataPath : sourcePath;
   return JSON.parse(await fs.readFile(usagePath, "utf8"));
 }
 
 async function readProfileInfo() {
-  const profilePath = path.join(app.getPath("userData"), "profile.json");
+  const profilePath = path.join(realUserDataPath, "profile.json");
   if (!fsSync.existsSync(profilePath)) {
     return { name: "Codex User", handle: "", plan: "", avatarPath: "", avatarUrl: "" };
   }

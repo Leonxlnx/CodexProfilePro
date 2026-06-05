@@ -6,11 +6,11 @@ CodexProfilePro is a local, cross-platform desktop dashboard for Codex usage. It
 
 Get the latest build from the release page:
 
-[CodexProfilePro v1.0.7](https://github.com/Leonxlnx/CodexProfilePro/releases/tag/v1.0.7)
+[CodexProfilePro v1.0.8](https://github.com/Leonxlnx/CodexProfilePro/releases/tag/v1.0.8)
 
-- Windows: use `CodexProfilePro.Setup.1.0.7.exe` for the installer, or `CodexProfilePro.1.0.7.exe` for portable use.
-- macOS: use `CodexProfilePro-1.0.7-universal.dmg`, or the universal ZIP.
-- Linux: use `CodexProfilePro-1.0.7.AppImage`, or `codex-profile-pro_1.0.7_amd64.deb`.
+- Windows: use `CodexProfilePro.Setup.1.0.8.exe` for the installer, or `CodexProfilePro.1.0.8.exe` for portable use.
+- macOS: use `CodexProfilePro-1.0.8-universal.dmg`, or the universal ZIP.
+- Linux: use `CodexProfilePro-1.0.8.AppImage`, or `codex-profile-pro_1.0.8_amd64.deb`.
 
 ## Use Guide
 
