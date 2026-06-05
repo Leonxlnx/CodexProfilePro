@@ -12,6 +12,14 @@
     <header class="topbar">
       <div class="page-title">Profile</div>
       <nav class="top-actions" aria-label="Profile actions">
+        <button id="shareProfileButton" class="ghost-action" type="button" aria-label="Share profile">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3v13" />
+            <path d="m7 8 5-5 5 5" />
+            <path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" />
+          </svg>
+          <span class="action-label">Share</span>
+        </button>
         <button id="editProfileButton" class="ghost-action" type="button" aria-label="Edit profile">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="m4.5 16.9-.7 3.3 3.3-.7L18.9 7.7a2 2 0 0 0 0-2.8l-.8-.8a2 2 0 0 0-2.8 0L4.5 16.9Z" />
@@ -139,6 +147,30 @@
             <button class="primary-action" type="submit">Save</button>
           </div>
         </form>
+      </section>
+    </div>
+
+    <div id="shareDialog" class="dialog-backdrop" hidden>
+      <section class="share-dialog" role="dialog" aria-modal="true" aria-labelledby="shareDialogTitle">
+        <div class="dialog-head">
+          <h2 id="shareDialogTitle">Share profile</h2>
+          <button id="closeShareDialog" class="icon-button" type="button" aria-label="Close share preview">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 6l12 12" />
+              <path d="M18 6 6 18" />
+            </svg>
+          </button>
+        </div>
+        <div class="share-preview-shell">
+          <img id="sharePreview" class="share-preview" alt="Share card preview" />
+        </div>
+        <div class="share-status-row">
+          <span id="shareStatus" class="share-status" aria-live="polite"></span>
+        </div>
+        <div class="dialog-actions">
+          <button id="copyShareButton" class="secondary-action" type="button">Copy image</button>
+          <button id="saveShareButton" class="primary-action" type="button">Save image</button>
+        </div>
       </section>
     </div>
 

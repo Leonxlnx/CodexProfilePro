@@ -1,6 +1,6 @@
 {
   "name": "codex-profile-pro",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "CodexProfilePro is a cross-platform desktop dashboard for Codex usage, token heatmaps, API cost estimates, and hourly tray refresh.",
   "author": {
     "name": "Leon",
@@ -14,6 +14,7 @@
     "sync": "node CodexProfilePro/fast-codex-usage-export.mjs CodexProfilePro/slopmeter.json",
     "test": "npm run test:smoke",
     "test:smoke": "node scripts/smoke.mjs",
+    "verify:share": "electron scripts/verify-share-render.cjs",
     "dist": "electron-builder --publish never",
     "dist:win": "electron-builder --win --publish never",
     "dist:mac": "electron-builder --mac --publish never",

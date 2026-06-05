@@ -514,12 +514,18 @@ button {
   backdrop-filter: blur(10px);
 }
 
-.profile-dialog {
+.profile-dialog,
+.share-dialog {
   width: min(420px, 100%);
   border: 1px solid #24242a;
   border-radius: 16px;
   background: #111112;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.48);
+  padding: 18px;
+}
+
+.share-dialog {
+  width: min(560px, calc(100vw - 32px));
   padding: 18px;
 }
 
@@ -617,6 +623,39 @@ button {
   background: #AF5656;
   color: #111111;
   font-weight: 600;
+}
+
+.share-preview-shell {
+  width: 100%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #0d0d0e;
+  padding: 10px;
+}
+
+.share-preview {
+  width: min(100%, 498px);
+  height: auto;
+  display: block;
+  border-radius: 24px;
+  border: 1px solid #1b1b20;
+  background: #111111;
+  box-shadow: 0 12px 38px rgba(0, 0, 0, 0.34);
+}
+
+.share-status-row {
+  min-height: 22px;
+  display: flex;
+  align-items: center;
+  margin: 10px 0 0;
+}
+
+.share-status {
+  color: #aaa8bb;
+  font-size: 13px;
+  line-height: 1.2;
 }
 
 @keyframes refresh-spin {
@@ -760,6 +799,11 @@ button {
 
   .cost-summary {
     grid-template-columns: 1fr;
+  }
+
+  .share-dialog {
+    width: calc(100vw - 24px);
+    padding: 14px;
   }
 
   .cost-card {

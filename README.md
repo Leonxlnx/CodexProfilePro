@@ -6,11 +6,11 @@ CodexProfilePro is a local, cross-platform desktop dashboard for Codex usage. It
 
 Get the latest build from the release page:
 
-[CodexProfilePro v1.0.6](https://github.com/Leonxlnx/CodexProfilePro/releases/tag/v1.0.6)
+[CodexProfilePro v1.0.7](https://github.com/Leonxlnx/CodexProfilePro/releases/tag/v1.0.7)
 
-- Windows: use `CodexProfilePro.Setup.1.0.6.exe` for the installer, or `CodexProfilePro.1.0.6.exe` for portable use.
-- macOS: use `CodexProfilePro-1.0.6-universal.dmg`, or the universal ZIP.
-- Linux: use `CodexProfilePro-1.0.6.AppImage`, or `codex-profile-pro_1.0.6_amd64.deb`.
+- Windows: use `CodexProfilePro.Setup.1.0.7.exe` for the installer, or `CodexProfilePro.1.0.7.exe` for portable use.
+- macOS: use `CodexProfilePro-1.0.7-universal.dmg`, or the universal ZIP.
+- Linux: use `CodexProfilePro-1.0.7.AppImage`, or `codex-profile-pro_1.0.7_amd64.deb`.
 
 ## Use Guide
 
@@ -19,6 +19,7 @@ Get the latest build from the release page:
 3. Use the refresh button in the bottom-left corner to rebuild the data immediately.
 4. Keep the app running in the tray for hourly background refresh.
 5. Use `Edit` in the top-right corner to set your local name, handle, plan, and profile picture.
+6. Use `Share` in the top-right corner to generate a compact PNG profile card that can be copied or saved.
 
 If no Codex logs exist on the machine, the app opens but the dashboard can be empty until Codex creates session logs.
 
@@ -31,6 +32,7 @@ If no Codex logs exist on the machine, the app opens but the dashboard can be em
 - Incremental refresh for large Codex log folders
 - Windows tray support with manual refresh
 - Editable local profile settings
+- Shareable PNG profile cards using the local profile and current activity data
 - Private usage data kept out of Git by default
 
 ## Data And Privacy
@@ -124,3 +126,9 @@ npm test
 ```
 
 The smoke test creates a fake Codex session log, runs the exporter against it, and verifies the generated usage JSON.
+
+To verify share-card rendering in Electron:
+
+```powershell
+npm run verify:share
+```

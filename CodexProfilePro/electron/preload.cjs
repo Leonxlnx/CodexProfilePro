@@ -6,6 +6,8 @@ contextBridge.exposeInMainWorld("profileRemake", {
   getProfileInfo: () => ipcRenderer.invoke("profile:get-profile-info"),
   saveProfileInfo: (profile) => ipcRenderer.invoke("profile:save-profile-info", profile),
   selectProfileAvatar: () => ipcRenderer.invoke("profile:select-profile-avatar"),
+  copyShareImage: (dataUrl) => ipcRenderer.invoke("profile:copy-share-image", dataUrl),
+  saveShareImage: (dataUrl) => ipcRenderer.invoke("profile:save-share-image", dataUrl),
   getAppInfo: () => ipcRenderer.invoke("profile:get-app-info"),
   onUsageDataUpdated: (callback) => {
     const listener = (_event, payload) => callback(payload);

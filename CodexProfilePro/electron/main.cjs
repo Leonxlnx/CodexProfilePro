@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, shell, dialog } = require("electron");
+const { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, shell, dialog, clipboard } = require("electron");
 const { spawn } = require("node:child_process");
 const fs = require("node:fs/promises");
 const fsSync = require("node:fs");
@@ -213,6 +213,41 @@ async function selectProfileAvatar() {
     avatarPath: target,
     avatarUrl: await resolveAvatarUrl(target),
   };
+}
+
+function shareImageBufferFromDataUrl(dataUrl) {
+  const match = String(dataUrl || "").match(/^data:image\/png;base64,([A-Za-z0-9+/=]+)$/);
+  if (!match) {
+    throw new Error("Share image must be a PNG data URL");
+  }
+  return Buffer.from(match[1], "base64");
+}
+
+async function saveShareImage(_event, dataUrl) {
+  const buffer = shareImageBufferFromDataUrl(dataUrl);
+  const filename = `codex-profile-${new Date().toISOString().slice(0, 10)}.png`;
+  const picturesPath = app.getPath("pictures") || app.getPath("home");
+  const result = await dialog.showSaveDialog(mainWindow || undefined, {
+    title: "Save share image",
+    defaultPath: path.join(picturesPath, filename),
+    filters: [{ name: "PNG image", extensions: ["png"] }],
+  });
+  if (result.canceled || !result.filePath) {
+    return { saved: false };
+  }
+
+  await fs.writeFile(result.filePath, buffer);
+  return { saved: true, path: result.filePath };
+}
+
+function copyShareImage(_event, dataUrl) {
+  shareImageBufferFromDataUrl(dataUrl);
+  const image = nativeImage.createFromDataURL(dataUrl);
+  if (image.isEmpty()) {
+    throw new Error("Generated share image is empty");
+  }
+  clipboard.writeImage(image);
+  return { copied: true };
 }
 
 async function copyProfileAvatar(source) {
@@ -500,6 +535,8 @@ app.whenReady().then(async () => {
   ipcMain.handle("profile:get-profile-info", readProfileInfo);
   ipcMain.handle("profile:save-profile-info", saveProfileInfo);
   ipcMain.handle("profile:select-profile-avatar", selectProfileAvatar);
+  ipcMain.handle("profile:copy-share-image", copyShareImage);
+  ipcMain.handle("profile:save-share-image", saveShareImage);
   ipcMain.handle("profile:get-app-info", () => ({ version: app.getVersion(), dataPath: usageJsonPath() }));
 
   await ensureUsageJson();

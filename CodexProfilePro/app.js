@@ -22,6 +22,30 @@ const MODEL_PRICES_PER_1M = {
   "gpt-5.3-codex": { input: 1.75, cachedInput: 0.175, output: 14 },
 };
 
+const SHARE_CARD = {
+  width: 996,
+  height: 614,
+  weeks: 24,
+  rows: 7,
+  cell: 28,
+  gap: 8,
+  padding: 64,
+  radius: 34,
+};
+
+const SHARE_COLORS = {
+  background: "#111111",
+  border: "#19191A",
+  empty: "#28282F",
+  text: "#E6E6FF",
+  muted: "#9998AA",
+  divider: "#1F1F25",
+  level1: "#3D2424",
+  level2: "#663636",
+  level3: "#8A4545",
+  level4: "#AF5656",
+};
+
 const state = {
   provider: null,
   daily: [],
@@ -32,6 +56,7 @@ const state = {
   refreshElapsedTimer: null,
   refreshResultTimer: null,
   profile: { ...DEFAULT_PROFILE },
+  shareDataUrl: "",
 };
 
 const els = {
@@ -59,6 +84,7 @@ const els = {
   averageCost: document.getElementById("averageCost"),
   refreshButton: document.getElementById("refreshButton"),
   refreshLabel: document.getElementById("refreshLabel"),
+  shareProfileButton: document.getElementById("shareProfileButton"),
   editProfileButton: document.getElementById("editProfileButton"),
   profileDialog: document.getElementById("profileDialog"),
   closeProfileDialog: document.getElementById("closeProfileDialog"),
@@ -69,6 +95,12 @@ const els = {
   profileAvatarInput: document.getElementById("profileAvatarInput"),
   chooseAvatarButton: document.getElementById("chooseAvatarButton"),
   clearAvatarButton: document.getElementById("clearAvatarButton"),
+  shareDialog: document.getElementById("shareDialog"),
+  closeShareDialog: document.getElementById("closeShareDialog"),
+  sharePreview: document.getElementById("sharePreview"),
+  shareStatus: document.getElementById("shareStatus"),
+  copyShareButton: document.getElementById("copyShareButton"),
+  saveShareButton: document.getElementById("saveShareButton"),
   tooltip: document.getElementById("tooltip"),
 };
 
@@ -80,11 +112,18 @@ async function init() {
   renderTabs();
   renderHeatmap();
   els.refreshButton?.addEventListener("click", refreshNow);
+  els.shareProfileButton?.addEventListener("click", openShareDialog);
   els.editProfileButton?.addEventListener("click", openProfileDialog);
   els.closeProfileDialog?.addEventListener("click", closeProfileDialog);
   els.profileDialog?.addEventListener("click", (event) => {
     if (event.target === els.profileDialog) {
       closeProfileDialog();
+    }
+  });
+  els.closeShareDialog?.addEventListener("click", closeShareDialog);
+  els.shareDialog?.addEventListener("click", (event) => {
+    if (event.target === els.shareDialog) {
+      closeShareDialog();
     }
   });
   els.profileForm?.addEventListener("submit", saveProfileFromDialog);
@@ -94,8 +133,13 @@ async function init() {
       els.profileAvatarInput.value = "";
     }
   });
+  els.copyShareButton?.addEventListener("click", copyShareImage);
+  els.saveShareButton?.addEventListener("click", saveShareImage);
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !els.profileDialog?.hidden) {
+    if (event.key !== "Escape") return;
+    if (!els.shareDialog?.hidden) {
+      closeShareDialog();
+    } else if (!els.profileDialog?.hidden) {
       closeProfileDialog();
     }
   });
@@ -298,6 +342,296 @@ async function saveProfileFromDialog(event) {
   }
 }
 
+async function openShareDialog() {
+  if (!els.shareDialog) return;
+  els.shareDialog.hidden = false;
+  setShareStatus("Rendering image...");
+  try {
+    await renderSharePreview();
+    setShareStatus("");
+  } catch (error) {
+    console.error("Share image render failed", error);
+    setShareStatus("Could not render share image.");
+  }
+}
+
+function closeShareDialog() {
+  if (els.shareDialog) {
+    els.shareDialog.hidden = true;
+  }
+}
+
+async function renderSharePreview() {
+  if (!state.provider) {
+    await loadData();
+  }
+  if (document.fonts?.ready) {
+    await document.fonts.ready;
+  }
+  state.shareDataUrl = await createShareImageDataUrl();
+  if (els.sharePreview) {
+    els.sharePreview.src = state.shareDataUrl;
+  }
+}
+
+async function copyShareImage() {
+  try {
+    if (!state.shareDataUrl) {
+      await renderSharePreview();
+    }
+    setShareStatus("Copying image...");
+    if (window.profileRemake?.copyShareImage) {
+      await window.profileRemake.copyShareImage(state.shareDataUrl);
+      setShareStatus("Copied image.");
+      return;
+    }
+    setShareStatus("Copy is available in the desktop app.");
+  } catch (error) {
+    console.error("Share copy failed", error);
+    setShareStatus("Could not copy image.");
+  }
+}
+
+async function saveShareImage() {
+  try {
+    if (!state.shareDataUrl) {
+      await renderSharePreview();
+    }
+    setShareStatus("Saving image...");
+    if (window.profileRemake?.saveShareImage) {
+      const result = await window.profileRemake.saveShareImage(state.shareDataUrl);
+      setShareStatus(result?.saved ? "Saved image." : "Save cancelled.");
+      return;
+    }
+
+    const link = document.createElement("a");
+    link.href = state.shareDataUrl;
+    link.download = `codex-profile-${isoDate(new Date())}.png`;
+    link.click();
+    setShareStatus("Downloaded image.");
+  } catch (error) {
+    console.error("Share save failed", error);
+    setShareStatus("Could not save image.");
+  }
+}
+
+function setShareStatus(label) {
+  if (els.shareStatus) {
+    els.shareStatus.textContent = label || "";
+  }
+}
+
+async function createShareImageDataUrl() {
+  const canvas = document.createElement("canvas");
+  canvas.width = SHARE_CARD.width;
+  canvas.height = SHARE_CARD.height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    throw new Error("Canvas is not available");
+  }
+
+  drawShareBackground(ctx);
+  await drawShareHeader(ctx);
+  drawShareHeatmap(ctx);
+  drawShareMetrics(ctx);
+
+  return canvas.toDataURL("image/png");
+}
+
+function drawShareBackground(ctx) {
+  ctx.clearRect(0, 0, SHARE_CARD.width, SHARE_CARD.height);
+  ctx.fillStyle = SHARE_COLORS.background;
+  roundedRect(ctx, 0, 0, SHARE_CARD.width, SHARE_CARD.height, SHARE_CARD.radius);
+  ctx.fill();
+  ctx.strokeStyle = SHARE_COLORS.border;
+  ctx.lineWidth = 2;
+  roundedRect(ctx, 1, 1, SHARE_CARD.width - 2, SHARE_CARD.height - 2, SHARE_CARD.radius);
+  ctx.stroke();
+}
+
+async function drawShareHeader(ctx) {
+  const name = cleanDisplayText(state.profile.name) || DEFAULT_PROFILE.name;
+  const handle = cleanDisplayText(state.profile.handle) || "";
+  const avatarUrl = cleanDisplayText(state.profile.avatarUrl, 2048);
+  const avatar = await loadCanvasImage(avatarUrl, { localOnly: true });
+  const codexIcon = await loadCanvasImage("./assets/codex-lobehub.svg");
+  const codexWordmark = await loadCanvasImage("./assets/codex-wordmark-lobehub.svg");
+
+  drawAvatar(ctx, avatar, name, 64, 66, 104);
+
+  ctx.fillStyle = SHARE_COLORS.text;
+  drawFittedText(ctx, name, 192, 100, 34, 500, SHARE_COLORS.text, 420, "left");
+  ctx.fillStyle = SHARE_COLORS.muted;
+  drawFittedText(ctx, handle, 192, 146, 24, 500, SHARE_COLORS.muted, 360, "left");
+
+  ctx.save();
+  ctx.globalAlpha = 0.86;
+  if (codexIcon) {
+    ctx.drawImage(codexIcon, 740, 91, 44, 44);
+  }
+  if (codexWordmark) {
+    ctx.drawImage(codexWordmark, 810, 100, 128, 34);
+  } else {
+    drawFittedText(ctx, "Codex", 810, 127, 32, 700, "#AAA8C0", 128, "left");
+  }
+  ctx.restore();
+}
+
+function drawShareHeatmap(ctx) {
+  const cells = buildShareCells();
+  const x0 = 64;
+  const y0 = 194;
+
+  cells.forEach((cell) => {
+    const x = x0 + (cell.col * (SHARE_CARD.cell + SHARE_CARD.gap));
+    const y = y0 + (cell.row * (SHARE_CARD.cell + SHARE_CARD.gap));
+    ctx.fillStyle = shareLevelColor(cell.level);
+    roundedRect(ctx, x, y, SHARE_CARD.cell, SHARE_CARD.cell, 6);
+    ctx.fill();
+  });
+}
+
+function drawShareMetrics(ctx) {
+  const stats = getProfileStats();
+  const items = [
+    [formatCompact(stats.total), "lifetime tokens"],
+    [formatCompact(stats.peak.total), "peak day"],
+    [`${stats.streaks.current || 0} days`, "current streak"],
+    [`${stats.streaks.longest || 0} days`, "longest streak"],
+  ];
+  const left = 64;
+  const width = SHARE_CARD.width - (left * 2);
+  const column = width / items.length;
+  const top = 490;
+
+  ctx.strokeStyle = SHARE_COLORS.divider;
+  ctx.lineWidth = 2;
+  for (let index = 1; index < items.length; index += 1) {
+    const x = left + (column * index);
+    ctx.beginPath();
+    ctx.moveTo(x, top + 4);
+    ctx.lineTo(x, top + 74);
+    ctx.stroke();
+  }
+
+  items.forEach(([value, label], index) => {
+    const center = left + (column * index) + (column / 2);
+    drawFittedText(ctx, value, center, top + 28, 34, 700, SHARE_COLORS.text, column - 24, "center");
+    drawFittedText(ctx, label, center, top + 74, 24, 500, SHARE_COLORS.muted, column - 24, "center");
+  });
+}
+
+function drawAvatar(ctx, image, name, x, y, size) {
+  ctx.save();
+  roundedRect(ctx, x, y, size, size, size / 2);
+  ctx.clip();
+  ctx.fillStyle = "#17171A";
+  ctx.fillRect(x, y, size, size);
+  if (image) {
+    drawCoverImage(ctx, image, x, y, size, size);
+  }
+  ctx.restore();
+
+  if (!image) {
+    ctx.strokeStyle = "#24242A";
+    ctx.lineWidth = 2;
+    roundedRect(ctx, x + 1, y + 1, size - 2, size - 2, size / 2);
+    ctx.stroke();
+    drawFittedText(ctx, initialForName(name), x + (size / 2), y + 67, 40, 500, "#B8B7C7", size - 24, "center");
+  }
+}
+
+function drawCoverImage(ctx, image, x, y, width, height) {
+  const scale = Math.max(width / image.width, height / image.height);
+  const drawWidth = image.width * scale;
+  const drawHeight = image.height * scale;
+  ctx.drawImage(image, x + ((width - drawWidth) / 2), y + ((height - drawHeight) / 2), drawWidth, drawHeight);
+}
+
+function buildShareCells() {
+  const cells = [];
+  const lastWeek = startOfWeek(graphEnd);
+  const first = new Date(lastWeek.getFullYear(), lastWeek.getMonth(), lastWeek.getDate());
+  first.setDate(first.getDate() - ((SHARE_CARD.weeks - 1) * 7));
+  const visibleEnd = getVisibleEndDate();
+
+  for (let col = 0; col < SHARE_CARD.weeks; col += 1) {
+    for (let row = 0; row < SHARE_CARD.rows; row += 1) {
+      const date = new Date(first.getFullYear(), first.getMonth(), first.getDate() + (col * 7) + row);
+      const iso = isoDate(date);
+      const value = date > visibleEnd ? 0 : state.byDate.get(iso)?.total || 0;
+      cells.push({ col, row, level: dailyLevelForValue(value) });
+    }
+  }
+
+  return cells;
+}
+
+function dailyLevelForValue(value) {
+  if (!value) return 0;
+  if (value < 150_000_000) return 1;
+  if (value < 1_000_000_000) return 2;
+  if (value < 50_000_000_000) return 3;
+  return 4;
+}
+
+function shareLevelColor(level) {
+  if (level === 1) return SHARE_COLORS.level1;
+  if (level === 2) return SHARE_COLORS.level2;
+  if (level === 3) return SHARE_COLORS.level3;
+  if (level === 4) return SHARE_COLORS.level4;
+  return SHARE_COLORS.empty;
+}
+
+function drawFittedText(ctx, text, x, y, size, weight, color, maxWidth, align = "left") {
+  const value = String(text || "");
+  let fontSize = size;
+  ctx.textBaseline = "alphabetic";
+  ctx.textAlign = align;
+  ctx.fillStyle = color;
+  do {
+    ctx.font = `${weight} ${fontSize}px ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+    if (ctx.measureText(value).width <= maxWidth || fontSize <= 14) break;
+    fontSize -= 1;
+  } while (fontSize > 14);
+  ctx.fillText(value, x, y);
+}
+
+async function loadCanvasImage(src, options = {}) {
+  const url = cleanDisplayText(src, 2048);
+  if (!url) return null;
+  if (options.localOnly && !isCanvasSafeImageUrl(url)) return null;
+
+  return new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => resolve(null);
+    if (/^https?:\/\//i.test(url)) {
+      image.crossOrigin = "anonymous";
+    }
+    image.src = url;
+  });
+}
+
+function isCanvasSafeImageUrl(url) {
+  return /^data:image\//i.test(url)
+    || /^file:\/\//i.test(url)
+    || /^blob:/i.test(url)
+    || url.startsWith("./")
+    || url.startsWith("/");
+}
+
+function roundedRect(ctx, x, y, width, height, radius) {
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + width, y, x + width, y + height, r);
+  ctx.arcTo(x + width, y + height, x, y + height, r);
+  ctx.arcTo(x, y + height, x, y, r);
+  ctx.arcTo(x, y, x + width, y, r);
+  ctx.closePath();
+}
+
 function setOptionalText(element, value) {
   if (!element) return;
   element.textContent = value || "";
@@ -352,17 +686,31 @@ function startAutoRefresh() {
 }
 
 function renderStats() {
-  const total = state.provider.insights.totalTokens?.total
-    ?? state.daily.reduce((sum, item) => sum + (item.total || 0), 0)
-    ?? state.provider.insights.mostUsedModel.tokens.total;
-  const peak = state.daily.reduce((best, item) => (item.total > best.total ? item : best), state.daily[0]);
-  const streaks = state.provider.insights.streaks;
+  const stats = getProfileStats();
 
-  els.lifetimeTokens.textContent = formatCompact(total);
-  els.peakTokens.textContent = formatCompact(peak.total);
+  els.lifetimeTokens.textContent = formatCompact(stats.total);
+  els.peakTokens.textContent = formatCompact(stats.peak.total);
   els.longestTask.textContent = formatDuration(DEFAULT_PROFILE.longestTaskSeconds);
-  els.currentStreak.textContent = `${streaks.current} days`;
-  els.longestStreak.textContent = `${streaks.longest} days`;
+  els.currentStreak.textContent = `${stats.streaks.current} days`;
+  els.longestStreak.textContent = `${stats.streaks.longest} days`;
+}
+
+function getProfileStats() {
+  const insights = state.provider?.insights || {};
+  const total = insights.totalTokens?.total
+    ?? state.daily.reduce((sum, item) => sum + (item.total || 0), 0)
+    ?? insights.mostUsedModel?.tokens?.total
+    ?? 0;
+  const peak = state.daily.reduce(
+    (best, item) => ((item.total || 0) > (best.total || 0) ? item : best),
+    { date: "", total: 0 }
+  );
+  const streaks = {
+    current: insights.streaks?.current || 0,
+    longest: insights.streaks?.longest || 0,
+  };
+
+  return { total, peak, streaks };
 }
 
 function renderTabs() {
