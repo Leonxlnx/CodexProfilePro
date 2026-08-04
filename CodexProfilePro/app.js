@@ -4,6 +4,7 @@ const DEFAULT_PROFILE = {
   plan: "",
   avatarUrl: "",
   avatarPath: "",
+  tokenDisplay: "all",
   longestTaskSeconds: 538143,
 };
 
@@ -16,6 +17,9 @@ let graphStart = dateFromISO("2025-07-01");
 let graphEnd = dateFromISO("2026-06-02");
 
 const MODEL_PRICES_PER_1M = {
+  "gpt-5.6-sol": { input: 5, cachedInput: 0.5, cacheWrite: 6.25, output: 30 },
+  "gpt-5.6-terra": { input: 2, cachedInput: 0.2, cacheWrite: 2.5, output: 12 },
+  "gpt-5.6-luna": { input: 0.2, cachedInput: 0.02, cacheWrite: 0.25, output: 1.2 },
   "gpt-5.5": { input: 5, cachedInput: 0.5, output: 30 },
   "gpt-5.4": { input: 2.5, cachedInput: 0.25, output: 15 },
   "gpt-5.4-mini": { input: 0.75, cachedInput: 0.075, output: 4.5 },
@@ -69,11 +73,14 @@ const els = {
   profileDot: document.getElementById("profileDot"),
   profilePlan: document.getElementById("profilePlan"),
   lifetimeTokens: document.getElementById("lifetimeTokens"),
+  lifetimeTokensLabel: document.getElementById("lifetimeTokensLabel"),
   peakTokens: document.getElementById("peakTokens"),
+  peakTokensLabel: document.getElementById("peakTokensLabel"),
   longestTask: document.getElementById("longestTask"),
   currentStreak: document.getElementById("currentStreak"),
   longestStreak: document.getElementById("longestStreak"),
   heatmap: document.getElementById("heatmap"),
+  activityTitle: document.getElementById("activityTitle"),
   heatmapWrap: document.querySelector(".heatmap-wrap"),
   monthLabels: document.getElementById("monthLabels"),
   costSummary: document.getElementById("costSummary"),
@@ -93,6 +100,7 @@ const els = {
   profileHandleInput: document.getElementById("profileHandleInput"),
   profilePlanInput: document.getElementById("profilePlanInput"),
   profileAvatarInput: document.getElementById("profileAvatarInput"),
+  tokenDisplayInput: document.getElementById("tokenDisplayInput"),
   chooseAvatarButton: document.getElementById("chooseAvatarButton"),
   clearAvatarButton: document.getElementById("clearAvatarButton"),
   shareDialog: document.getElementById("shareDialog"),
@@ -239,6 +247,10 @@ async function loadProfileInfo() {
     }
     state.profile = { ...DEFAULT_PROFILE, ...(profile || {}) };
     renderProfile(state.profile);
+    if (state.provider) {
+      renderStats();
+      renderHeatmap();
+    }
   } catch (error) {
     console.error("Profile info failed", error);
     state.profile = { ...DEFAULT_PROFILE };
@@ -299,6 +311,7 @@ function openProfileDialog() {
   els.profileHandleInput.value = cleanDisplayText(state.profile.handle);
   els.profilePlanInput.value = cleanDisplayText(state.profile.plan);
   els.profileAvatarInput.value = cleanDisplayText(state.profile.avatarPath || state.profile.avatarUrl, 2048);
+  els.tokenDisplayInput.value = state.profile.tokenDisplay === "uncached" ? "uncached" : "all";
   els.profileDialog.hidden = false;
   els.profileNameInput?.focus();
 }
@@ -328,6 +341,7 @@ async function saveProfileFromDialog(event) {
     handle: els.profileHandleInput?.value || "",
     plan: els.profilePlanInput?.value || "",
     avatarPath: els.profileAvatarInput?.value || "",
+    tokenDisplay: els.tokenDisplayInput?.value === "uncached" ? "uncached" : "all",
   };
 
   try {
@@ -336,6 +350,8 @@ async function saveProfileFromDialog(event) {
       : profile;
     state.profile = { ...DEFAULT_PROFILE, ...(saved || profile) };
     renderProfile(state.profile);
+    renderStats();
+    renderHeatmap();
     closeProfileDialog();
   } catch (error) {
     console.error("Profile save failed", error);
@@ -493,9 +509,11 @@ function drawShareHeatmap(ctx) {
 
 function drawShareMetrics(ctx) {
   const stats = getProfileStats();
+  const tokenLabel = state.profile.tokenDisplay === "uncached" ? "lifetime uncached" : "lifetime tokens";
+  const peakLabel = state.profile.tokenDisplay === "uncached" ? "peak uncached day" : "peak day";
   const items = [
-    [formatCompact(stats.total), "lifetime tokens"],
-    [formatCompact(stats.peak.total), "peak day"],
+    [formatCompact(stats.total), tokenLabel],
+    [formatCompact(stats.peak.total), peakLabel],
     [`${stats.streaks.current || 0} days`, "current streak"],
     [`${stats.streaks.longest || 0} days`, "longest streak"],
   ];
@@ -559,7 +577,7 @@ function buildShareCells() {
     for (let row = 0; row < SHARE_CARD.rows; row += 1) {
       const date = new Date(first.getFullYear(), first.getMonth(), first.getDate() + (col * 7) + row);
       const iso = isoDate(date);
-      const value = date > visibleEnd ? 0 : state.byDate.get(iso)?.total || 0;
+      const value = date > visibleEnd ? 0 : displayedTokenTotal(state.byDate.get(iso));
       cells.push({ col, row, level: dailyLevelForValue(value) });
     }
   }
@@ -687,9 +705,14 @@ function startAutoRefresh() {
 
 function renderStats() {
   const stats = getProfileStats();
+  const uncachedOnly = state.profile.tokenDisplay === "uncached";
 
   els.lifetimeTokens.textContent = formatCompact(stats.total);
   els.peakTokens.textContent = formatCompact(stats.peak.total);
+  els.lifetimeTokensLabel.textContent = uncachedOnly ? "Lifetime uncached tokens" : "Lifetime tokens";
+  els.peakTokensLabel.textContent = uncachedOnly ? "Peak uncached tokens" : "Peak tokens";
+  els.activityTitle.textContent = uncachedOnly ? "Uncached token activity" : "Token activity";
+  els.heatmap.setAttribute("aria-label", uncachedOnly ? "Daily uncached token heatmap" : "Daily token heatmap");
   els.longestTask.textContent = formatDuration(DEFAULT_PROFILE.longestTaskSeconds);
   els.currentStreak.textContent = `${stats.streaks.current} days`;
   els.longestStreak.textContent = `${stats.streaks.longest} days`;
@@ -697,12 +720,17 @@ function renderStats() {
 
 function getProfileStats() {
   const insights = state.provider?.insights || {};
-  const total = insights.totalTokens?.total
-    ?? state.daily.reduce((sum, item) => sum + (item.total || 0), 0)
-    ?? insights.mostUsedModel?.tokens?.total
-    ?? 0;
+  const total = state.profile.tokenDisplay === "uncached"
+    ? state.daily.reduce((sum, item) => sum + displayedTokenTotal(item), 0)
+    : insights.totalTokens?.total
+      ?? state.daily.reduce((sum, item) => sum + displayedTokenTotal(item), 0)
+      ?? insights.mostUsedModel?.tokens?.total
+      ?? 0;
   const peak = state.daily.reduce(
-    (best, item) => ((item.total || 0) > (best.total || 0) ? item : best),
+    (best, item) => {
+      const total = displayedTokenTotal(item);
+      return total > best.total ? { ...item, total } : best;
+    },
     { date: "", total: 0 }
   );
   const streaks = {
@@ -837,7 +865,7 @@ function buildValueMap(allDays) {
   if (state.mode === "daily") {
     return new Map(allDays.map((date) => {
       const iso = isoDate(date);
-      return [iso, state.byDate.get(iso)?.total || 0];
+      return [iso, displayedTokenTotal(state.byDate.get(iso))];
     }));
   }
 
@@ -853,7 +881,7 @@ function buildValueMap(allDays) {
     allDays.forEach((date) => {
       const iso = isoDate(date);
       const week = isoDate(startOfWeek(date));
-      weekly.set(week, (weekly.get(week) || 0) + (state.byDate.get(iso)?.total || 0));
+      weekly.set(week, (weekly.get(week) || 0) + displayedTokenTotal(state.byDate.get(iso)));
     });
 
     const maxWeekly = Math.max(...weekly.values(), 0);
@@ -878,7 +906,7 @@ function buildValueMap(allDays) {
     if (!weeks.includes(week)) {
       weeks.push(week);
     }
-    running += state.byDate.get(iso)?.total || 0;
+    running += displayedTokenTotal(state.byDate.get(iso));
     cumulativeByWeek.set(week, running);
   });
 
@@ -973,16 +1001,24 @@ function hideTooltip() {
 
 function tooltipText(iso, value) {
   const label = formatDateLabel(dateFromISO(iso));
+  const tokenType = state.profile.tokenDisplay === "uncached" ? "uncached tokens" : "tokens";
   if (state.mode === "weekly") {
-    return `${formatNumber(value)} tokens week of ${label}`;
+    return `${formatNumber(value)} ${tokenType} week of ${label}`;
   }
   if (state.mode === "cumulative") {
-    return `${formatNumber(value)} cumulative tokens by ${label}`;
+    return `${formatNumber(value)} cumulative ${tokenType} by ${label}`;
   }
   if (state.mode === "cost") {
     return `${formatCost(value)} estimated API cost on ${label}`;
   }
-  return `${formatNumber(value)} tokens on ${label}`;
+  return `${formatNumber(value)} ${tokenType} on ${label}`;
+}
+
+function displayedTokenTotal(tokens) {
+  if (!tokens) return 0;
+  const total = Number(tokens.total) || 0;
+  if (state.profile.tokenDisplay !== "uncached") return total;
+  return Math.max(total - (Number(tokens.cache?.input) || 0), 0);
 }
 
 function levelForValue(value) {
@@ -1009,7 +1045,7 @@ function estimateDayCost(day) {
   if (!day) return 0;
   const breakdown = Array.isArray(day.breakdown) && day.breakdown.length
     ? day.breakdown
-    : [{ name: "gpt-5.5", tokens: day }];
+    : [{ name: "gpt-5.6-sol", tokens: day }];
 
   return breakdown.reduce((total, item) => total + estimateTokenCost(item.name, item.tokens), 0);
 }
@@ -1018,11 +1054,13 @@ function estimateTokenCost(modelName, tokens = {}) {
   const price = priceForModel(modelName);
   const input = tokens.input || 0;
   const cachedInput = tokens.cache?.input || 0;
-  const billableInput = Math.max(input - cachedInput, 0);
+  const cacheWrite = tokens.cache?.write || 0;
+  const billableInput = Math.max(input - cachedInput - cacheWrite, 0);
   const output = tokens.output || 0;
   return (
     (billableInput * price.input) +
     (cachedInput * price.cachedInput) +
+    (cacheWrite * (price.cacheWrite || price.input)) +
     (output * price.output)
   ) / 1_000_000;
 }
@@ -1030,10 +1068,13 @@ function estimateTokenCost(modelName, tokens = {}) {
 function priceForModel(modelName) {
   const model = String(modelName || "").toLowerCase();
   if (model.includes("spark") || model.includes("5.3-codex") || model.includes("codex-auto-review")) return MODEL_PRICES_PER_1M["gpt-5.3-codex"];
+  if (model.includes("5.6-luna")) return MODEL_PRICES_PER_1M["gpt-5.6-luna"];
+  if (model.includes("5.6-terra")) return MODEL_PRICES_PER_1M["gpt-5.6-terra"];
+  if (model.includes("5.6")) return MODEL_PRICES_PER_1M["gpt-5.6-sol"];
   if (model.includes("5.5")) return MODEL_PRICES_PER_1M["gpt-5.5"];
   if (model.includes("5.4-mini")) return MODEL_PRICES_PER_1M["gpt-5.4-mini"];
   if (model.includes("5.4")) return MODEL_PRICES_PER_1M["gpt-5.4"];
-  return MODEL_PRICES_PER_1M["gpt-5.5"];
+  return MODEL_PRICES_PER_1M["gpt-5.6-sol"];
 }
 
 function formatCompact(value) {

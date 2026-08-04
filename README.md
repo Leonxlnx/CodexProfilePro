@@ -53,6 +53,8 @@ If your Codex logs are not under `~/.codex`, set `CODEX_HOME` to the correct Cod
 
 Profile data is not hardcoded into the release. Each machine can configure its own profile with the in-app `Edit` button.
 
+The `Token display` setting can show all tokens or exclude cached input tokens across profile totals, heatmaps, and share cards. API cost estimates always include the full usage.
+
 Saved profile settings live in the app user-data folder:
 
 ```text
@@ -95,12 +97,17 @@ CodexProfilePro/slopmeter.json
 
 The Cost tab is an API-equivalent estimate. It uses official OpenAI API pricing where available:
 
+- `gpt-5.6` / `gpt-5.6-sol`
+- `gpt-5.6-terra`
+- `gpt-5.6-luna`
 - `gpt-5.5`
 - `gpt-5.4`
 - `gpt-5.4-mini`
 - `gpt-5.3-codex`
 
 `GPT-5.3-Codex-Spark` is treated as a `gpt-5.3-codex` estimate because OpenAI marks Spark credit rates as research-preview/not final.
+
+GPT-5.6 cache writes are included when Codex reports `cache_write_tokens`. Estimates use standard short-context pricing; the exporter does not retain enough per-request context to apply the higher pricing for prompts over 272K tokens accurately.
 
 ## Run From Source
 

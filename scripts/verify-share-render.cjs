@@ -31,6 +31,7 @@ async function readProfileInfo() {
     plan: profile.plan || "",
     avatarPath,
     avatarUrl: avatarPath && fsSync.existsSync(avatarPath) ? pathToFileURL(avatarPath).href : "",
+    tokenDisplay: profile.tokenDisplay === "uncached" ? "uncached" : "all",
   };
 }
 

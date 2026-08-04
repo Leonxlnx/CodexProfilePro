@@ -578,7 +578,8 @@ button {
   font-size: 13px;
 }
 
-.profile-form input {
+.profile-form input,
+.profile-form select {
   width: 100%;
   height: 38px;
   border: 1px solid #26262c;
@@ -590,7 +591,8 @@ button {
   font-size: 14px;
 }
 
-.profile-form input:focus {
+.profile-form input:focus,
+.profile-form select:focus {
   outline: 1px solid #3e3e47;
   outline-offset: 0;
 }

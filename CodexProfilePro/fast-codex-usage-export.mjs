@@ -40,13 +40,15 @@ function exportEndDate() {
 function normalizeUsage(value) {
   if (!value) return null;
   const input = value.input_tokens ?? 0;
-  const cached = value.cached_input_tokens ?? value.cache_read_input_tokens ?? 0;
+  const cached = value.cached_input_tokens ?? value.cache_read_input_tokens ?? value.input_tokens_details?.cached_tokens ?? 0;
+  const cacheWrite = value.cache_write_tokens ?? value.cache_write_input_tokens ?? value.input_tokens_details?.cache_write_tokens ?? 0;
   const output = value.output_tokens ?? 0;
   const reasoning = value.reasoning_output_tokens ?? 0;
   const total = value.total_tokens ?? 0;
   return {
     input_tokens: input,
     cached_input_tokens: cached,
+    cache_write_tokens: cacheWrite,
     output_tokens: output,
     reasoning_output_tokens: reasoning,
     total_tokens: total > 0 ? total : input + output,
@@ -57,6 +59,7 @@ function addUsage(base, delta) {
   return {
     input_tokens: (base?.input_tokens ?? 0) + delta.input_tokens,
     cached_input_tokens: (base?.cached_input_tokens ?? 0) + delta.cached_input_tokens,
+    cache_write_tokens: (base?.cache_write_tokens ?? 0) + delta.cache_write_tokens,
     output_tokens: (base?.output_tokens ?? 0) + delta.output_tokens,
     reasoning_output_tokens: (base?.reasoning_output_tokens ?? 0) + delta.reasoning_output_tokens,
     total_tokens: (base?.total_tokens ?? 0) + delta.total_tokens,
@@ -67,6 +70,7 @@ function subtractUsage(current, previous) {
   return {
     input_tokens: Math.max(current.input_tokens - (previous?.input_tokens ?? 0), 0),
     cached_input_tokens: Math.max(current.cached_input_tokens - (previous?.cached_input_tokens ?? 0), 0),
+    cache_write_tokens: Math.max(current.cache_write_tokens - (previous?.cache_write_tokens ?? 0), 0),
     output_tokens: Math.max(current.output_tokens - (previous?.output_tokens ?? 0), 0),
     reasoning_output_tokens: Math.max(current.reasoning_output_tokens - (previous?.reasoning_output_tokens ?? 0), 0),
     total_tokens: Math.max(current.total_tokens - (previous?.total_tokens ?? 0), 0),
@@ -78,6 +82,7 @@ function didRollback(current, previous) {
   return (
     current.input_tokens < previous.input_tokens ||
     current.cached_input_tokens < previous.cached_input_tokens ||
+    current.cache_write_tokens < previous.cache_write_tokens ||
     current.output_tokens < previous.output_tokens ||
     current.reasoning_output_tokens < previous.reasoning_output_tokens ||
     current.total_tokens < previous.total_tokens
@@ -89,7 +94,7 @@ function emptyTotals() {
     input: 0,
     output: 0,
     reasoning: 0,
-    cache: { input: 0, output: 0 },
+    cache: { input: 0, output: 0, write: 0 },
     total: 0,
   };
 }
@@ -107,9 +112,12 @@ function extractModel(payload) {
 }
 
 function normalizeModelName(value) {
-  const model = String(value || "gpt-5.5").toLowerCase();
+  const model = String(value || "gpt-5.6-sol").toLowerCase();
   if (model.includes("spark")) return "spark";
   if (model.includes("codex-auto-review")) return "gpt-5.3-codex";
+  if (model.includes("5.6-luna")) return "gpt-5.6-luna";
+  if (model.includes("5.6-terra")) return "gpt-5.6-terra";
+  if (model.includes("5.6")) return "gpt-5.6-sol";
   if (model.includes("5.5")) return "gpt-5.5";
   if (model.includes("5.4-mini")) return "gpt-5.4-mini";
   if (model.includes("5.4")) return "gpt-5.4";
@@ -121,6 +129,7 @@ function addRawUsage(target, rawUsage) {
   target.output += rawUsage.output_tokens;
   target.reasoning += rawUsage.reasoning_output_tokens;
   target.cache.input += rawUsage.cached_input_tokens;
+  target.cache.write += rawUsage.cache_write_tokens;
   target.total += rawUsage.total_tokens;
 }
 
@@ -160,6 +169,7 @@ function addModelAggregate(modelTotals, day) {
     modelTotals.get(model).reasoning += tokens.reasoning || 0;
     modelTotals.get(model).cache.input += tokens.cache.input;
     modelTotals.get(model).cache.output += tokens.cache.output;
+    modelTotals.get(model).cache.write += tokens.cache.write || 0;
     modelTotals.get(model).total += tokens.total;
   }
 }
@@ -184,6 +194,7 @@ function cloneTotals(value) {
     cache: {
       input: value?.cache?.input ?? 0,
       output: value?.cache?.output ?? 0,
+      write: value?.cache?.write ?? 0,
     },
     total: value?.total ?? 0,
   };
@@ -212,6 +223,7 @@ function dailyTotalsFromExisting(payload, resetStartDate) {
       cache: {
         input: day.cache?.input ?? 0,
         output: day.cache?.output ?? 0,
+        write: day.cache?.write ?? 0,
       },
       total: day.total ?? 0,
       models: new Map(),
@@ -224,7 +236,7 @@ function dailyTotalsFromExisting(payload, resetStartDate) {
     }
 
     if (!totals.models.size && totals.total > 0) {
-      totals.models.set("gpt-5.5", cloneTotals(totals));
+      totals.models.set("gpt-5.6-sol", cloneTotals(totals));
     }
 
     dailyTotals.set(day.date, totals);
@@ -330,7 +342,7 @@ async function processFile(file, startDate, endDate, dailyTotals) {
     if (!dailyTotals.has(dayKey)) {
       dailyTotals.set(dayKey, createDailyTotals());
     }
-    addDaily(dailyTotals.get(dayKey), rawUsage, extractedModel || currentModel || "gpt-5.5");
+    addDaily(dailyTotals.get(dayKey), rawUsage, extractedModel || currentModel || "gpt-5.6-sol");
   }
 }
 
@@ -401,6 +413,7 @@ async function main() {
     acc.output += day.output;
     acc.cache.input += day.cache.input;
     acc.cache.output += day.cache.output;
+    acc.cache.write += day.cache.write || 0;
     acc.total += day.total;
     return acc;
   }, emptyTotals());
