@@ -13,9 +13,9 @@ const output = path.join(temp, "usage.json");
 
 await fs.mkdir(sessionDir, { recursive: true });
 await fs.writeFile(path.join(sessionDir, "rollout-test.jsonl"), [
-  JSON.stringify({ timestamp: "2026-06-02T10:00:00.000Z", type: "response_item", payload: { type: "turn_context", model: "gpt-5.5" } }),
-  JSON.stringify({ timestamp: "2026-06-02T10:01:00.000Z", type: "event_msg", payload: { type: "token_count", info: { total_token_usage: { input_tokens: 1000, cached_input_tokens: 400, output_tokens: 100, reasoning_output_tokens: 20, total_tokens: 1100 }, last_token_usage: { input_tokens: 1000, cached_input_tokens: 400, output_tokens: 100, reasoning_output_tokens: 20, total_tokens: 1100 } } } }),
-  JSON.stringify({ timestamp: "2026-06-02T10:02:00.000Z", type: "event_msg", payload: { type: "token_count", info: { total_token_usage: { input_tokens: 1800, cached_input_tokens: 500, output_tokens: 180, reasoning_output_tokens: 40, total_tokens: 1980 }, last_token_usage: { input_tokens: 800, cached_input_tokens: 100, output_tokens: 80, reasoning_output_tokens: 20, total_tokens: 880 } } } })
+  JSON.stringify({ timestamp: "2026-06-02T10:00:00.000Z", type: "response_item", payload: { type: "turn_context", model: "gpt-5.6" } }),
+  JSON.stringify({ timestamp: "2026-06-02T10:01:00.000Z", type: "event_msg", payload: { type: "token_count", info: { total_token_usage: { input_tokens: 1000, cached_input_tokens: 400, cache_write_tokens: 200, output_tokens: 100, reasoning_output_tokens: 20, total_tokens: 1100 }, last_token_usage: { input_tokens: 1000, cached_input_tokens: 400, cache_write_tokens: 200, output_tokens: 100, reasoning_output_tokens: 20, total_tokens: 1100 } } } }),
+  JSON.stringify({ timestamp: "2026-06-02T10:02:00.000Z", type: "event_msg", payload: { type: "token_count", info: { total_token_usage: { input_tokens: 1800, cached_input_tokens: 500, cache_write_tokens: 300, output_tokens: 180, reasoning_output_tokens: 40, total_tokens: 1980 }, last_token_usage: { input_tokens: 800, cached_input_tokens: 100, cache_write_tokens: 100, output_tokens: 80, reasoning_output_tokens: 20, total_tokens: 880 } } } })
 ].join("\n") + "\n", "utf8");
 
 await run("node", ["--check", "CodexProfilePro/app.js"], root);
@@ -30,7 +30,8 @@ const provider = payload.providers?.[0];
 const day = provider?.daily?.find((item) => item.date === "2026-06-02");
 assert(day, "expected 2026-06-02 daily output");
 assert(day.total === 1980, `expected delta total 1980, got ${day.total}`);
-assert(day.breakdown?.[0]?.name === "gpt-5.5", "expected gpt-5.5 breakdown");
+assert(day.breakdown?.[0]?.name === "gpt-5.6-sol", "expected gpt-5.6 alias to normalize to Sol");
+assert(day.cache?.write === 300, `expected 300 cache-write tokens, got ${day.cache?.write}`);
 assert(provider.insights.streaks.current >= 1, "expected active streak");
 
 await runIncrementalExporterSmoke();
@@ -135,6 +136,13 @@ async function runHeatmapProjectionSmoke() {
     globalThis.__dailyCells = __visibleCellsForMode("daily");
     globalThis.__weeklyCells = __visibleCellsForMode("weekly");
     globalThis.__cumulativeCells = __visibleCellsForMode("cumulative");
+    globalThis.__modelCosts = {
+      solWithCache: estimateTokenCost("gpt-5.6", { input: 1_000_000, output: 100_000, cache: { input: 100_000, write: 200_000 } }),
+      terraOutput: estimateTokenCost("gpt-5.6-terra", { output: 1_000_000 }),
+      lunaInput: estimateTokenCost("gpt-5.6-luna", { input: 1_000_000 }),
+    };
+    state.profile.tokenDisplay = "uncached";
+    globalThis.__uncachedTotal = displayedTokenTotal({ total: 1_100, cache: { input: 400, write: 200 } });
   `;
 
   vm.runInNewContext(testSource, context, { filename: "app.js" });
@@ -148,6 +156,10 @@ async function runHeatmapProjectionSmoke() {
     assert(!byDate(context.__cumulativeCells, iso)?.future, `expected cumulative ${iso} to render`);
     assert((byDate(context.__cumulativeCells, iso)?.value || 0) > 0, `expected cumulative ${iso} to be filled`);
   }
+  assert(Math.abs(context.__modelCosts.solWithCache - 7.8) < 1e-9, `expected Sol cache-aware cost 7.8, got ${context.__modelCosts.solWithCache}`);
+  assert(context.__modelCosts.terraOutput === 12, `expected Terra output cost 12, got ${context.__modelCosts.terraOutput}`);
+  assert(context.__modelCosts.lunaInput === 0.2, `expected Luna input cost 0.2, got ${context.__modelCosts.lunaInput}`);
+  assert(context.__uncachedTotal === 700, `expected cached input to be excluded, got ${context.__uncachedTotal}`);
 }
 
 async function runIncrementalExporterSmoke() {

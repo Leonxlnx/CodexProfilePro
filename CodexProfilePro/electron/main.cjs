@@ -157,6 +157,7 @@ async function readProfileInfo() {
     avatarPath: savedProfile.avatarPath || "",
     avatarUrl,
     hasAvatar: Boolean(avatarUrl),
+    tokenDisplay: savedProfile.tokenDisplay === "uncached" ? "uncached" : "all",
   };
 }
 
@@ -175,6 +176,7 @@ async function readSavedProfile() {
       plan: cleanProfileText(payload.plan, 32),
       avatarPath,
       avatarUrl: await resolveAvatarUrl(avatarPath),
+      tokenDisplay: payload.tokenDisplay === "uncached" ? "uncached" : "all",
     };
   } catch {
     return {};
@@ -188,6 +190,7 @@ async function saveProfileInfo(_event, payload = {}) {
     handle: normalizeHandle(payload.handle),
     plan: cleanProfileText(payload.plan, 32),
     avatarPath,
+    tokenDisplay: payload.tokenDisplay === "uncached" ? "uncached" : "all",
   };
 
   await fs.mkdir(app.getPath("userData"), { recursive: true });

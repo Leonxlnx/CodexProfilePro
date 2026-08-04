@@ -47,11 +47,11 @@
       <section class="metric-panel" aria-label="Profile stats">
         <div class="metric">
           <strong id="lifetimeTokens">...</strong>
-          <span>Lifetime tokens</span>
+          <span id="lifetimeTokensLabel">Lifetime tokens</span>
         </div>
         <div class="metric">
           <strong id="peakTokens">...</strong>
-          <span>Peak tokens</span>
+          <span id="peakTokensLabel">Peak tokens</span>
         </div>
         <div class="metric">
           <strong id="longestTask">...</strong>
@@ -69,7 +69,7 @@
 
       <section class="activity-card" aria-label="Token activity">
         <div class="activity-header">
-          <h2>Token activity</h2>
+          <h2 id="activityTitle">Token activity</h2>
           <div class="tabs" role="tablist" aria-label="Heatmap mode">
             <button class="tab is-active" type="button" data-mode="daily" role="tab" aria-selected="true">Daily</button>
             <button class="tab" type="button" data-mode="weekly" role="tab" aria-selected="false">Weekly</button>
@@ -140,6 +140,13 @@
           <label>
             <span>Profile image path or URL</span>
             <input id="profileAvatarInput" name="avatar" maxlength="2048" />
+          </label>
+          <label>
+            <span>Token display</span>
+            <select id="tokenDisplayInput" name="tokenDisplay">
+              <option value="all">All tokens</option>
+              <option value="uncached">Uncached only</option>
+            </select>
           </label>
           <div class="dialog-actions">
             <button id="chooseAvatarButton" class="secondary-action" type="button">Choose image</button>
